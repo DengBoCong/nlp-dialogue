@@ -1,0 +1,21 @@
+{
+  "max_sentence": 50,
+  "max_utterance": 10,
+  "units": 200,
+  "vocab_size": 2000,
+  "embedding_dim": 200,
+  "max_train_data_size": 36,
+  "max_valid_data_size": 100,
+  "max_database_size": 0,
+  "learning_rate": 0.001,
+  "type": "pre_treat",
+  "dict_file": "\\data\\smn_dict_fn.json",
+  "checkpoint": "\\checkpoints\\smn",
+  "tokenized_train": "\\data\\ubuntu_train.txt",
+  "tokenized_valid": "\\data\\ubuntu_valid.txt",
+  "solr_server": "http://49.235.33.100:8983/solr/smn/",
+  "candidate_database": "\\data\\candidate.json",
+  "batch_size": 32,
+  "buffer_size": 20000,
+  "epochs": 5
+}

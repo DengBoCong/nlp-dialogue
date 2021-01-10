@@ -6,6 +6,12 @@ __pycache__/
 # C extensions
 *.so
 
+# Project
+.gitignore
+.idea/
+dialogue/checkpoints/
+dialogue/data/history/
+
 # Distribution / packaging
 .Python
 build/
