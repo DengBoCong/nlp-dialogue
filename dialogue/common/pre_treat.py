@@ -3,7 +3,7 @@ import json
 import jieba
 import numpy as np
 import tensorflow as tf
-from hlp.chat.common.utils import log_operator
+from dialogue.utils import log_operator
 
 
 def _check_file(raw_file: str, processed_file: str, remove_tokenized: bool = True):

@@ -1,5 +1,5 @@
 import tensorflow as tf
-import hlp.utils.layers as layers
+import dialogue.tensorflow.layers as layers
 import hlp.chat.common.utils as utils
 
 
