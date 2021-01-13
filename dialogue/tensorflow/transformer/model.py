@@ -1,5 +1,5 @@
 import tensorflow as tf
-import hlp.utils.layers as layers
+import dialogue.tensorflow.layers as layers
 
 
 def encoder(vocab_size: int, num_layers: int, units: int, d_model: int,
