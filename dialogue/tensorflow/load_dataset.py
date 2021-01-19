@@ -3,7 +3,7 @@ import jieba
 import pysolr
 import tensorflow as tf
 from sklearn.feature_extraction.text import TfidfVectorizer
-from hlp.utils.utils import load_tokenizer
+from dialogue.tensorflow.utils import load_tokenizer
 
 
 def preprocess_request(sentence: str, max_length: int, start_sign: str,
@@ -77,34 +77,33 @@ def _read_data(data_path: str, num_examples: int, max_length: int, tokenizer: tf
     return input_tensor, target_tensor, diag_weight
 
 
-def load_data(dict_fn: str, data_fn: str, buffer_size: int, batch_size: int, checkpoint_dir: str,
-              max_length: int, valid_data_split: float = 0.0, valid_data_fn: str = "",
+def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size: int,
+              max_length: int, valid_data_split: float = 0.0, valid_data_path: str = "",
               max_train_data_size: int = 0, max_valid_data_size: int = 0):
     """
     数据加载方法，含四个元素的元组，包括如下：
-    :param dict_fn: 字典路径
-    :param data_fn: 文本数据路径
+    :param dict_path: 字典路径
+    :param train_data_path: 文本数据路径
     :param buffer_size: Dataset加载缓存大小
     :param batch_size: Dataset加载批大小
-    :param checkpoint_dir: 检查点保存路径
     :param max_length: 单个句子最大长度
     :param valid_data_split: 用于从训练数据中划分验证数据
-    :param valid_data_fn: 验证数据文本路径
+    :param valid_data_path: 验证数据文本路径
     :param max_train_data_size: 最大训练数据量
     :param max_valid_data_size: 最大验证数据量
     :return: 训练Dataset、验证Dataset、训练数据总共的步数、验证数据总共的步数和检查点前缀
     """
     print("读取训练对话对...")
-    tokenizer = load_tokenizer(dict_path=dict_fn)
+    tokenizer = load_tokenizer(dict_path=dict_path)
     train_input, train_target, sample_weights = \
-        _read_data(data_path=data_fn, num_examples=max_train_data_size, max_length=max_length, tokenizer=tokenizer)
+        _read_data(data_path=train_data_path, num_examples=max_train_data_size, max_length=max_length, tokenizer=tokenizer)
 
     valid_flag = True  # 是否开启验证标记
     valid_steps_per_epoch = 0
 
-    if valid_data_fn != "":
+    if valid_data_path != "":
         print("读取验证对话对...")
-        valid_input, valid_target, _ = _read_data(data_path=valid_data_fn, num_examples=max_valid_data_size,
+        valid_input, valid_target, _ = _read_data(data_path=valid_data_path, num_examples=max_valid_data_size,
                                                   max_length=max_length, tokenizer=tokenizer)
     elif valid_data_split != 0.0:
         train_size = int(len(train_input) * (1.0 - valid_data_split))
@@ -128,10 +127,9 @@ def load_data(dict_fn: str, data_fn: str, buffer_size: int, batch_size: int, che
     else:
         valid_dataset = None
 
-    checkpoint_prefix = os.path.join(checkpoint_dir, "ckpt")
     steps_per_epoch = len(train_input) // batch_size
 
-    return train_dataset, valid_dataset, steps_per_epoch, valid_steps_per_epoch, checkpoint_prefix
+    return train_dataset, valid_dataset, steps_per_epoch, valid_steps_per_epoch
 
 
 def smn_load_train_data(dict_fn: str, data_fn: str, checkpoint_dir: str, buffer_size: int,

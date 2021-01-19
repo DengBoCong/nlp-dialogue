@@ -1,3 +1,5 @@
 numpy==1.18.5
 jieba==0.42.1
 tensorflow==2.3.1
+sklearn
+pysolr
