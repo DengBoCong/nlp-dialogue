@@ -1,130 +1,148 @@
 import tensorflow as tf
-import dialogue.tensorflow.layers as layers
+from dialogue.tensorflow.layers import MultiHeadAttention
+from dialogue.tensorflow.utils import create_padding_mask
+from dialogue.tensorflow.utils import create_look_ahead_mask
+from dialogue.tensorflow.positional_encoding import positional_encoding
 
 
-def encoder(vocab_size: int, num_layers: int, units: int, d_model: int,
-            num_heads: int, dropout: float, name: str = "encoder") -> tf.keras.Model:
-    """
-    transformer的encoder，使用函数式API进行编写，实现了
-    模型层内部的一系列操作，num_layers决定了使用多少个
-    encoder_layer层，更具Transformer架构里面的描述，可以根据
-    效果进行调整，在encoder中还进行了位置编码，具体原理自行翻阅
-    资料，就是实现公式的问题，这里就不多做注释了
+def encoder(vocab_size: int, num_layers: int, units: int, embedding_dim: int, num_heads: int,
+            dropout: float, d_type: tf.dtypes.DType = tf.float32, name: str = "encoder") -> tf.keras.Model:
+    """transformer的encoder
+
     :param vocab_size: token大小
     :param num_layers: 编码解码的数量
     :param units: 单元大小
-    :param d_model: 深度
+    :param embedding_dim: 词嵌入维度
     :param num_heads: 多头注意力的头部层数量
     :param dropout: dropout的权重
+    :param d_type: 运算精度
     :param name: 名称
     :return: Transformer的Encoder
     """
-    inputs = tf.keras.Input(shape=(None,), name="inputs")
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-    embeddings = tf.keras.layers.Embedding(vocab_size, d_model)(inputs)
-    embeddings *= tf.math.sqrt(tf.cast(d_model, tf.float32))
-    pos_encoding = layers.positional_encoding(vocab_size, d_model)
+    inputs = tf.keras.Input(shape=(None,), name="{}_inputs".format(name), dtype=d_type)
+    padding_mask = tf.keras.layers.Lambda(create_padding_mask, output_shape=(1, 1, None),
+                                          name="{}_padding_mask".format(name))(inputs, d_type)
+    embeddings = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim,
+                                           dtype=d_type, name="{}_embeddings".format(name))(inputs)
+    embeddings *= tf.math.sqrt(x=tf.cast(x=embedding_dim, dtype=d_type), name="{}_sqrt".format(name))
+    pos_encoding = positional_encoding(position=vocab_size, d_model=embedding_dim, d_type=d_type)
     embeddings = embeddings + pos_encoding[:, :tf.shape(embeddings)[1], :]
 
-    outputs = tf.keras.layers.Dropout(rate=dropout)(embeddings)
+    outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_dropout".format(name))(embeddings)
 
-    # 这里layer使用的name是为了调试的时候答应信息方便查看，也可以不写
     for i in range(num_layers):
-        outputs = layers.transformer_encoder_layer(
-            units=units,
-            d_model=d_model,
-            num_heads=num_heads,
-            dropout=dropout,
-            name="transformer_encoder_layer_{}".format(i),
-        )([outputs, padding_mask])
+        outputs = encoder_layer(units=units, d_model=embedding_dim, num_heads=num_heads, dropout=dropout,
+                                d_type=d_type, name="{}_layer_{}".format(name, i))([outputs, padding_mask])
+
+    return tf.keras.Model(inputs=inputs, outputs=outputs, name=name)
+
+
+def decoder(vocab_size: int, num_layers: int, units: int, embedding_dim: int, num_heads: int,
+            dropout: float, d_type: tf.dtypes.DType = tf.float32, name: str = "decoder") -> tf.keras.Model:
+    """transformer的decoder
+
+    :param vocab_size: token大小
+    :param num_layers: 编码解码的数量
+    :param units: 单元大小
+    :param embedding_dim: 词嵌入维度
+    :param num_heads: 多头注意力的头部层数量
+    :param dropout: dropout的权重
+    :param d_type: 运算精度
+    :param name: 名称
+    :return: Transformer的Decoder
+    """
+    inputs = tf.keras.Input(shape=(None,), dtype=d_type, name="{}_inputs".format(name))
+    enc_outputs = tf.keras.Input(shape=(None, embedding_dim), dtype=d_type, name="{}_encoder_outputs".format(name))
+
+    padding_mask = tf.keras.layers.Lambda(create_padding_mask, output_shape=(1, 1, None),
+                                          name="{}_padding_mask".format(name))(inputs, d_type)
+    look_ahead_mask = tf.keras.layers.Lambda(create_look_ahead_mask, output_shape=(1, None, None),
+                                             name="{}_look_ahead_mask".format(name))(inputs)
+
+    embeddings = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim, dtype=d_type,
+                                           name="{}_embeddings".format(name))(inputs)
+    embeddings *= tf.math.sqrt(x=tf.cast(x=embedding_dim, dtype=d_type), name="{}_sqrt".format(name))
+    pos_encoding = positional_encoding(position=vocab_size, d_model=embedding_dim, d_type=d_type)
+    embeddings = embeddings + pos_encoding[:, :tf.shape(embeddings)[1], :]
+
+    outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_dropout".format(name))(embeddings)
+
+    for i in range(num_layers):
+        outputs = decoder_layer(
+            units=units, d_model=embedding_dim, num_heads=num_heads, dropout=dropout, d_type=d_type,
+            name="decoder_layer_{}".format(i))(inputs=[outputs, enc_outputs, look_ahead_mask, padding_mask])
+
+    outputs = tf.keras.layers.Dense(units=vocab_size, dtype=d_type, name="{}_outputs_dense".format(name))(outputs)
+
+    return tf.keras.Model(inputs=[inputs, enc_outputs], outputs=outputs, name=name)
+
+
+def encoder_layer(units: int, d_model: int, num_heads: int, dropout: float,
+                  d_type: tf.dtypes.DType = tf.float32, name: str = "encoder_layer") -> tf.keras.Model:
+    """Transformer的encoder层
+
+    :param units: 词汇量大小
+    :param d_model: 深度，词嵌入维度
+    :param num_heads: 注意力头数
+    :param dropout: dropout的权重
+    :param d_type: 运算精度
+    :param name: 名称
+    :return: Transformer的Encoder内部层
+    """
+    inputs = tf.keras.Input(shape=(None, d_model), dtype=d_type, name="{}_inputs".format(name))
+    padding_mask = tf.keras.Input(shape=(1, 1, None), dtype=d_type, name="{}_padding_mask".format(name))
+
+    attention, _ = MultiHeadAttention(d_model, num_heads)(q=inputs, k=inputs, v=inputs, mask=padding_mask)
+    attention = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_attention_dropout".format(name))(attention)
+    attention = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
+                                                   name="{}_attention_layer_norm".format(name))(inputs + attention)
+
+    outputs = tf.keras.layers.Dense(units=units, activation='relu',
+                                    dtype=d_type, name="{}_dense_act".format(name))(attention)
+    outputs = tf.keras.layers.Dense(units=d_model, dtype=d_type, name="{}_dense".format(name))(outputs)
+    outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_outputs_dropout".format(name))(outputs)
+    outputs = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
+                                                 name="{}_outputs_layer_norm".format(name))(attention + outputs)
 
     return tf.keras.Model(inputs=[inputs, padding_mask], outputs=outputs, name=name)
 
 
-def decoder(vocab_size: int, num_layers: int, units: int, d_model: int,
-            num_heads: int, dropout: float, name: str = "decoder") -> tf.keras.Model:
-    """
-    transformer的decoder，使用函数式API进行编写，实现了
-    模型层内部的一系列操作，相关的一些变量的时候基本和上面
-    的encoder差不多，这里不多说
-    :param vocab_size: token大小
-    :param num_layers: 编码解码的数量
-    :param units: 单元大小
-    :param d_model: 深度
-    :param num_heads: 多头注意力的头部层数量
+def decoder_layer(units: int, d_model: int, num_heads: int, dropout: float,
+                  d_type: tf.dtypes.DType = tf.float32, name: str = "decoder_layer") -> tf.keras.Model:
+    """Transformer的decoder层
+
+    :param units: 词汇量大小
+    :param d_model: 深度，词嵌入维度
+    :param num_heads: 注意力头数
     :param dropout: dropout的权重
+    :param d_type: 运算精度
     :param name: 名称
-    :return: Transformer的Decoder
+    :return: Transformer的Decoder内部层
     """
-    inputs = tf.keras.Input(shape=(None,), name="inputs")
-    enc_outputs = tf.keras.Input(shape=(None, d_model), name="encoder_outputs")
-    look_ahead_mask = tf.keras.Input(shape=(1, None, None), name="look_ahead_mask")
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name='padding_mask')
+    inputs = tf.keras.Input(shape=(None, d_model), dtype=d_type, name="{}_inputs".format(name))
+    enc_outputs = tf.keras.Input(shape=(None, d_model), dtype=d_type, name="{}_encoder_outputs".format(name))
+    look_ahead_mask = tf.keras.Input(shape=(1, None, None), dtype=d_type, name="{}_look_ahead_mask".format(name))
+    padding_mask = tf.keras.Input(shape=(1, 1, None), dtype=d_type, name="{}_padding_mask".format(name))
 
-    embeddings = tf.keras.layers.Embedding(vocab_size, d_model)(inputs)
-    embeddings *= tf.math.sqrt(tf.cast(d_model, tf.float32))
-    pos_encoding = layers.positional_encoding(vocab_size, d_model)
-    embeddings = embeddings + pos_encoding[:, :tf.shape(embeddings)[1], :]
+    attention1, _ = MultiHeadAttention(d_model, num_heads)(q=inputs, k=inputs, v=inputs, mask=look_ahead_mask)
+    attention1 = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
+                                                    name="{}_attention_layer_norm1")(attention1 + inputs)
 
-    outputs = tf.keras.layers.Dropout(rate=dropout)(embeddings)
+    attention2, _ = MultiHeadAttention(d_model, num_heads)(q=attention1, k=enc_outputs, v=enc_outputs,
+                                                           mask=padding_mask)
+    attention2 = tf.keras.layers.Dropout(rate=dropout, dtype=d_type,
+                                         name="{}_attention_drouput".format(name))(attention2)
+    attention2 = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
+                                                    name="{}_attention_layer_norm2")(attention2 + attention1)
 
-    for i in range(num_layers):
-        outputs = layers.transformer_decoder_layer(
-            units=units, d_model=d_model, num_heads=num_heads,
-            dropout=dropout, name="transformer_decoder_layer_{}".format(i),
-        )(inputs=[outputs, enc_outputs, look_ahead_mask, padding_mask])
+    outputs = tf.keras.layers.Dense(units=units, activation='relu',
+                                    dtype=d_type, name="{}_dense_act".format(name))(attention2)
+    outputs = tf.keras.layers.Dense(units=d_model, dtype=d_type, name="{}_dense".format(name))(outputs)
+    outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_outputs_dropout".format(name))(outputs)
+    outputs = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
+                                                 name="{}_outputs_layer_norm".format(name))(outputs + attention2)
 
-    return tf.keras.Model(inputs=[inputs, enc_outputs, look_ahead_mask, padding_mask],
-                          outputs=outputs, name=name)
-
-
-def transformer(vocab_size: int, num_layers: int, units: int, d_model: int,
-                num_heads: int, dropout: float, name: str = "transformer") -> tf.keras.Model:
-    """
-    transformer的粗粒度的结构实现，在忽略细节的情况下，看作是
-    encoder和decoder的实现，这里需要注意的是，因为是使用self_attention，
-    所以在输入的时候，这里需要进行mask，防止暴露句子中带预测的信息，影响
-    模型的效果
-    :param vocab_size: token大小
-    :param num_layers: 编码解码的数量
-    :param units: 单元大小
-    :param d_model: 深度
-    :param num_heads: 多头注意力的头部层数量
-    :param dropout: dropout的权重
-    :param name: 名称
-    :return: Transformer
-    """
-    inputs = tf.keras.Input(shape=(None,), name="inputs")
-    dec_inputs = tf.keras.Input(shape=(None,), name="dec_inputs")
-
-    # 使用了Lambda将方法包装成层，为的是满足函数式API的需要
-    enc_padding_mask = tf.keras.layers.Lambda(
-        layers.create_padding_mask, output_shape=(1, 1, None),
-        name="enc_padding_mask"
-    )(inputs)
-
-    look_ahead_mask = tf.keras.layers.Lambda(
-        _combine_mask, output_shape=(1, None, None),
-        name="look_ahead_mask"
-    )(dec_inputs)
-
-    dec_padding_mask = tf.keras.layers.Lambda(
-        layers.create_padding_mask, output_shape=(1, 1, None),
-        name="dec_padding_mask"
-    )(inputs)
-
-    enc_outputs = encoder(
-        vocab_size=vocab_size, num_layers=num_layers, units=units,
-        d_model=d_model, num_heads=num_heads, dropout=dropout
-    )(inputs=[inputs, enc_padding_mask])
-
-    dec_outputs = decoder(
-        vocab_size=vocab_size, num_layers=num_layers, units=units,
-        d_model=d_model, num_heads=num_heads, dropout=dropout
-    )(inputs=[dec_inputs, enc_outputs, look_ahead_mask, dec_padding_mask])
-
-    outputs = tf.keras.layers.Dense(units=vocab_size, name="outputs")(dec_outputs)
-    return tf.keras.Model(inputs=[inputs, dec_inputs], outputs=outputs, name=name)
+    return tf.keras.Model(inputs=[inputs, enc_outputs, look_ahead_mask, padding_mask], outputs=outputs, name=name)
 
 
 def gumbel_softmax(inputs: tf.Tensor, alpha: float):

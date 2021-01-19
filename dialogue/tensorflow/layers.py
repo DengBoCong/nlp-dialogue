@@ -2,69 +2,6 @@ import numpy as np
 import tensorflow as tf
 
 
-def transformer_encoder_layer(units: int, d_model: int, num_heads: int,
-                              dropout: float, name: str = "transformer_encoder_layer"):
-    """
-    Transformer的encoder层，使用函数式API
-    :param units: 词汇量大小
-    :param d_model: 深度，词嵌入维度
-    :param num_heads: 注意力头数
-    :param dropout: dropout的权重
-    :param name: 名称
-    :return: Transformer的Encoder内部层
-    """
-    inputs = tf.keras.Input(shape=(None, d_model), name="inputs")
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-
-    attention, _ = MultiHeadAttention(d_model, num_heads)(q=inputs, k=inputs, v=inputs,
-                                                          mask=padding_mask)
-    attention = tf.keras.layers.Dropout(rate=dropout)(attention)
-    attention = tf.keras.layers.LayerNormalization(epsilon=1e-6)(inputs + attention)
-
-    outputs = tf.keras.layers.Dense(units=units, activation='relu')(attention)
-    outputs = tf.keras.layers.Dense(units=d_model)(outputs)
-    outputs = tf.keras.layers.Dropout(rate=dropout)(outputs)
-    outputs = tf.keras.layers.LayerNormalization(epsilon=1e-6)(attention + outputs)
-
-    return tf.keras.Model(inputs=[inputs, padding_mask], outputs=outputs, name=name)
-
-
-def transformer_decoder_layer(units: int, d_model: int, num_heads: int,
-                              dropout: float, name: str = "transformer_decoder_layer"):
-    """
-    Transformer的decoder层，使用函数式API
-    :param units: 词汇量大小
-    :param d_model: 深度，词嵌入维度
-    :param num_heads: 注意力头数
-    :param dropout: dropout的权重
-    :param name: 名称
-    :return: Transformer的Decoder内部层
-    """
-    inputs = tf.keras.Input(shape=(None, d_model), name="inputs")
-    enc_outputs = tf.keras.Input(shape=(None, d_model), name="encoder_outputs")
-    look_ahead_mask = tf.keras.Input(shape=(1, None, None), name="look_ahead_mask")
-    padding_mask = tf.keras.Input(shape=(1, 1, None), name="padding_mask")
-
-    attention1, _ = MultiHeadAttention(d_model, num_heads)(q=inputs, k=inputs, v=inputs, mask=look_ahead_mask)
-    attention1 = tf.keras.layers.LayerNormalization(epsilon=1e-6)(attention1 + inputs)
-
-    attention2, _ = MultiHeadAttention(d_model, num_heads)(q=attention1, k=enc_outputs, v=enc_outputs,
-                                                           mask=padding_mask)
-    attention2 = tf.keras.layers.Dropout(rate=dropout)(attention2)
-    attention2 = tf.keras.layers.LayerNormalization(epsilon=1e-6)(attention2 + attention1)
-
-    outputs = tf.keras.layers.Dense(units=units, activation='relu')(attention2)
-    outputs = tf.keras.layers.Dense(units=d_model)(outputs)
-    outputs = tf.keras.layers.Dropout(rate=dropout)(outputs)
-    outputs = tf.keras.layers.LayerNormalization(epsilon=1e-6)(outputs + attention2)
-
-    return tf.keras.Model(
-        inputs=[inputs, enc_outputs, look_ahead_mask, padding_mask],
-        outputs=outputs,
-        name=name
-    )
-
-
 class BahdanauAttention(tf.keras.layers.Layer):
     def __init__(self, units):
         super(BahdanauAttention, self).__init__()
@@ -170,43 +107,7 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         return output, attention_weights
 
 
-def _get_angles(pos, i, d_model):
-    angle_rates = 1 / np.power(10000, (2 * (i // 2)) / np.float32(d_model))
-    return pos * angle_rates
 
 
-def positional_encoding(position, d_model):
-    angle_rads = _get_angles(np.arange(position)[:, np.newaxis],
-                             np.arange(d_model)[np.newaxis, :],
-                             d_model)
-
-    # 将 sin 应用于数组中的偶数索引（indices）；2i
-    angle_rads[:, 0::2] = np.sin(angle_rads[:, 0::2])
-
-    # 将 cos 应用于数组中的奇数索引；2i+1
-    angle_rads[:, 1::2] = np.cos(angle_rads[:, 1::2])
-
-    pos_encoding = angle_rads[np.newaxis, ...]
-
-    return tf.cast(pos_encoding, dtype=tf.float32)
 
 
-def create_padding_mask(seq):
-    """
-    用于创建输入序列的扩充部分的mask
-    :param seq: 输入序列
-    :return: mask
-    """
-    seq = tf.cast(tf.math.equal(seq, 0), tf.float32)
-    return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
-
-
-def create_look_ahead_mask(seq):
-    """
-    用于创建当前点以后位置部分的mask
-    :param seq: 输入序列
-    :return: mask
-    """
-    seq_len = tf.shape(seq)[1]
-    look_ahead_mask = 1 - tf.linalg.band_part(tf.ones((seq_len, seq_len)), -1, 0)
-    return look_ahead_mask
