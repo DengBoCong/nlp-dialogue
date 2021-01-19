@@ -7,6 +7,8 @@ sys.path.append(os.path.abspath(__file__)[:os.path.abspath(__file__).find("\\dia
 from dialogue.tensorflow.utils import load_checkpoint
 from dialogue.tensorflow.optimizers import CustomSchedule
 import dialogue.tensorflow.transformer.model as transformer
+from dialogue.common.preprocess_corpus import preprocess_dataset
+from dialogue.common.preprocess_corpus import to_single_turn_dataset
 
 
 def main():
@@ -37,12 +39,12 @@ def main():
     parser.add_argument('--end_sign', default='<end>', type=str, required=False, help='序列结束标记')
     parser.add_argument('--unk_sign', default='<unk>', type=str, required=False, help='未登录词')
     parser.add_argument('--dict_file', default='data\\transformer_dict.json', type=str, required=False, help='字典路径')
-    parser.add_argument('--checkpoint_dir', default='tensorflow\\checkpoints\\transformer', type=str, required=False,
+    parser.add_argument('--checkpoint_dir', default='checkpoints\\tensorflow\\transformer', type=str, required=False,
                         help='检查点路径')
     parser.add_argument('--resource_data', default='data\\LCCC.json', type=str, required=False, help='原始数据集路径')
-    parser.add_argument('--tokenized_data', default='data\\lccc_tokenized.txt', type=str, required=False,
+    parser.add_argument('--tokenized_data', default='data\\preprocess\\lccc_tokenized.txt', type=str, required=False,
                         help='处理好的多轮分词数据集路径')
-    parser.add_argument('--qa_tokenized_data', default='data\\tokenized.txt', type=str, required=False,
+    parser.add_argument('--qa_tokenized_data', default='data\\preprocess\\tokenized.txt', type=str, required=False,
                         help='处理好的单轮分词数据集路径')
     parser.add_argument('--history_image_dir', default='data\\history\\transformer\\', type=str, required=False,
                         help='数据指标图表保存路径')
@@ -71,7 +73,13 @@ def main():
                                          checkpoint_save_size=options["checkpoint_save_size"])
 
     if options["act"] == "pre_treat":
-        
+        preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options['resource_data'],
+                           tokenized_data_path=work_path + options['tokenized_data'], remove_tokenized=True)
+        to_single_turn_dataset(tokenized_data_path=work_path + options['tokenized_data'],
+                               dict_path=work_path + options['dict_file'], unk_sign=options['unk_sign'],
+                               start_sign=options['start_sign'], end_sign=options['end_sign'],
+                               max_data_size=options['max_train_data_size'], vocab_size=options['vocab_size'],
+                               qa_data_path=work_path + options['qa_tokenized_data'])
 
 
 if __name__ == '__main__':

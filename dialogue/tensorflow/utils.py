@@ -49,7 +49,7 @@ def load_checkpoint(checkpoint_dir: str, execute_type: str, checkpoint_save_size
     if model is not None:
         checkpoint = tf.train.Checkpoint(model=model)
     elif encoder is not None and decoder is not None:
-        checkpoint = tf.train.CheckpointManager(encoder=encoder, decoder=decoder)
+        checkpoint = tf.train.Checkpoint(encoder=encoder, decoder=decoder)
     else:
         print("加载检查点所传入模型有误，请检查后重试！")
 

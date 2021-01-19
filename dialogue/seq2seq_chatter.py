@@ -217,8 +217,8 @@ def main():
             response = chatter.respond(req=req)
             print("Agent: ", response)
     elif execute_type == 'pre_treat':
-        pre_treat.preprocess_datasets(dataset_name="lccc", raw_data_path=work_path + options['resource_data'],
-                                      tokenized_data_path=work_path + options['tokenized_data'], remove_tokenized=True)
+        pre_treat.preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options['resource_data'],
+                                     tokenized_data_path=work_path + options['tokenized_data'], remove_tokenized=True)
         pre_treat.to_single_turn_dataset(
             tokenized_data_path=work_path + options['tokenized_data'], dict_path=work_path + options['dict_file'],
             unk_sign=options['unk_sign'], start_sign=options['start_sign'], end_sign=options['end_sign'],
