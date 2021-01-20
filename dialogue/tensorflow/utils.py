@@ -1,4 +1,25 @@
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""支持各类任务的工具，检查点加载、分词器加载、句子预处理、mask等等
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
+import jieba
 import tensorflow as tf
 
 
@@ -15,8 +36,8 @@ def combine_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32):
 
 
 def create_padding_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32) -> tf.Tensor:
-    """
-    用于创建输入序列的扩充部分的mask
+    """ 用于创建输入序列的扩充部分的mask
+
     :param seq: 输入序列
     :param d_type: 运算精度
     :return: mask
@@ -26,8 +47,8 @@ def create_padding_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32) ->
 
 
 def _create_look_ahead_mask(seq: tf.Tensor) -> tf.Tensor:
-    """
-    用于创建当前点以后位置部分的mask
+    """ 用于创建当前点以后位置部分的mask
+
     :param seq: 输入序列
     :return: mask
     """
@@ -68,8 +89,8 @@ def load_checkpoint(checkpoint_dir: str, execute_type: str, checkpoint_save_size
 
 
 def load_tokenizer(dict_path: str) -> tf.keras.preprocessing.text.Tokenizer:
-    """
-    通过字典加载tokenizer
+    """ 通过字典加载tokenizer
+
     :param dict_path: 字典路径
     :return tokenizer: 分词器
     """
@@ -82,3 +103,19 @@ def load_tokenizer(dict_path: str) -> tf.keras.preprocessing.text.Tokenizer:
         tokenizer = tf.keras.preprocessing.text.tokenizer_from_json(json_string)
 
     return tokenizer
+
+
+def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.preprocessing.text.Tokenizer) -> tf.Tensor:
+    """ 用于处理回复功能的输入句子，返回模型使用的序列
+
+    :param sentence: 待处理句子
+    :param max_length: 单个句子最大长度
+    :param tokenizer: 分词器
+    :return: 处理好的句子和decoder输入
+    """
+    sentence = " ".join(jieba.cut(sentence))
+
+    inputs = tokenizer.texts_to_sequences([sentence])
+    inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding='post')
+
+    return inputs

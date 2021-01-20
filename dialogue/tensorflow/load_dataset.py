@@ -19,30 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-import jieba
 import pysolr
 import tensorflow as tf
 from sklearn.feature_extraction.text import TfidfVectorizer
 from dialogue.tensorflow.utils import load_tokenizer
-
-
-def preprocess_request(sentence: str, max_length: int, start_sign: str,
-                       tokenizer: tf.keras.preprocessing.text.Tokenizer):
-    """
-    用于处理回复功能的输入句子，返回模型使用的序列
-    :param sentence: 待处理句子
-    :param max_length: 单个句子最大长度
-    :param start_sign: 开始标记
-    :param tokenizer: 分词器
-    :return: 处理好的句子和decoder输入
-    """
-    sentence = " ".join(jieba.cut(sentence))
-
-    inputs = tokenizer.texts_to_sequences([sentence])
-    inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding='post')
-    dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
-
-    return inputs, dec_input
 
 
 def _create_dataset(data_path: str, num_examples: int):

@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""TensorFlow版本transformer的实现执行器入口
+"""transformer的实现执行器入口
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -23,13 +23,13 @@ import sys
 import json
 import tensorflow as tf
 from argparse import ArgumentParser
-
 sys.path.append(os.path.abspath(__file__)[:os.path.abspath(__file__).find("\\dialogue\\")])
 import dialogue.tensorflow.transformer.model as transformer
 from dialogue.tensorflow.optimizers import CustomSchedule
 from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
 from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
 from dialogue.tensorflow.transformer.modules import evaluate
+from dialogue.tensorflow.transformer.modules import inference
 from dialogue.tensorflow.transformer.modules import train
 from dialogue.tensorflow.utils import load_checkpoint
 
@@ -121,6 +121,19 @@ def main():
                  batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
                  dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
                  valid_data_path=work_path + options["valid_data_path"])
+    elif options["act"] == "chat":
+        print("Agent: 你好！结束聊天请输入ESC。")
+        while True:
+            request = input("User: ")
+            if request == "ESC":
+                print("Agent: 再见！")
+                exit(0)
+            response = inference(encoder=encoder, decoder=decoder, max_length=options["max_length"], request=request,
+                                 beam_size=options["beam_size"], dict_path=work_path + options["dict_path"],
+                                 start_sign=options["start_sign"], end_sign=options["end_sign"])
+            print("Agent: ", response)
+    else:
+        parser.error(msg="")
 
 
 if __name__ == '__main__':

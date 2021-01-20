@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""TensorFlow版本transformer的模型功能实现，包含train模式、evaluate模式、chat模式
+"""transformer的模型功能实现，包含train模式、evaluate模式、chat模式
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -20,8 +20,11 @@ from __future__ import print_function
 
 import time
 import tensorflow as tf
+from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.load_dataset import load_data
 from dialogue.tensorflow.optimizers import loss_func_mask
+from dialogue.tensorflow.utils import load_tokenizer
+from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import ProgressBar
 from dialogue.tools import show_history
 
@@ -126,6 +129,53 @@ def evaluate(encoder: tf.keras.Model, decoder: tf.keras.Model, train_loss: tf.ke
                        dataset=valid_dataset, steps_per_epoch=valid_steps_per_epoch, batch_size=batch_size)
 
     print('验证结束')
+
+
+def inference(encoder: tf.keras.Model, decoder: tf.keras.Model, max_length: int, request: str,
+              beam_size: int, dict_path: str = "", start_sign: str = "<start>", end_sign: str = "<end>") -> str:
+    """ 对话推断模块
+
+    :param encoder: encoder模型
+    :param decoder: decoder模型
+    :param max_length: 最大句子长度
+    :param request: 输入句子
+    :param beam_size: beam大小
+    :param dict_path: 字典路径，若使用phoneme则不用传
+    :param start_sign: 句子开始标记
+    :param end_sign: 句子结束标记
+    :return: 返回历史指标数据
+    """
+    tokenizer = load_tokenizer(dict_path)
+
+    enc_input = preprocess_request(sentence=request, tokenizer=tokenizer, max_length=max_length)
+    enc_output, padding_mask = encoder(inputs=enc_input)
+    dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
+
+    beam_search_container = BeamSearch(beam_size=beam_size, max_length=max_length, worst_score=0)
+    beam_search_container.reset(enc_output=enc_output, dec_input=dec_input, remain=padding_mask)
+    enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
+
+    for t in range(max_length):
+        predictions = decoder(inputs=[dec_input, enc_output, padding_mask])
+        predictions = tf.nn.softmax(predictions, axis=-1)
+        predictions = predictions[:, -1:, :]
+        predictions = tf.squeeze(predictions, axis=1)
+
+        beam_search_container.expand(predictions=predictions, end_sign=tokenizer.word_index.get(end_sign))
+        # 注意了，如果BeamSearch容器里的beam_size为0了，说明已经找到了相应数量的结果，直接跳出循环
+        if beam_search_container.beam_size == 0:
+            break
+        enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
+
+    beam_search_result = beam_search_container.get_result(top_k=3)
+    result = ''
+    # 从容器中抽取序列，生成最终结果
+    for i in range(len(beam_search_result)):
+        temp = beam_search_result[i].numpy()
+        text = tokenizer.sequences_to_texts(temp)
+        text[0] = text[0].replace(start_sign, '').replace(end_sign, '').replace(' ', '')
+        result = '<' + text[0] + '>' + result
+    return result
 
 
 def _train_step(encoder: tf.keras.Model, decoder: tf.keras.Model, optimizer: tf.optimizers.Adam,
