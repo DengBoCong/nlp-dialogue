@@ -13,6 +13,7 @@ __pycache__/
 .gitignore
 dialogue/checkpoints/
 dialogue/data/history/
+dialogue/debug.py
 
 build/
 develop-eggs/

@@ -1,4 +1,7 @@
 import os
+import io
+import re
+import sys
 import time
 import logging
 import matplotlib.pyplot as plt
@@ -31,7 +34,7 @@ def log_operator(level: str, log_file: str = None,
     return logger
 
 
-def show_history(self, history, save_dir, valid_freq):
+def show_history(history: dict, save_dir: str, valid_freq: int):
     """ 用于显示历史指标趋势以及保存历史指标图表图
 
     :param history: 历史指标
@@ -61,3 +64,60 @@ def show_history(self, history, save_dir, valid_freq):
         os.makedirs(save_dir, exist_ok=True)
     plt.savefig(save_path)
     plt.show()
+
+
+class ProgressBar(object):
+    """ 进度条工具 """
+
+    EXECUTE = "%(current)d/%(total)d %(bar)s (%(percent)3d%%) %(metrics)s"
+    DONE = "%(current)d/%(total)d %(bar)s - %(time).4fs/step %(metrics)s"
+
+    def __init__(self, total: int, num: int, width: int = 30, fmt: str = EXECUTE,
+                 symbol: str = "=", remain: str = ".", output=sys.stderr):
+        """
+        :param total: 执行总的次数
+        :param num: 每执行一次任务数量级
+        :param width: 进度条符号数量
+        :param fmt: 进度条格式
+        :param symbol: 进度条完成符号
+        :param remain: 进度条未完成符号
+        :param output: 错误输出
+        """
+        assert len(symbol) == 1
+        self.args = {}
+        self.metrics = ""
+        self.total = total
+        self.num = num
+        self.width = width
+        self.symbol = symbol
+        self.remain = remain
+        self.output = output
+        self.fmt = re.sub(r"(?P<name>%\(.+?\))d", r"\g<name>%dd" % len(str(total)), fmt)
+
+    def __call__(self, current: int, metrics: str):
+        """
+        :param current: 已执行次数
+        :param metrics: 附加在进度条后的指标字符串
+        """
+        self.metrics = metrics
+        percent = current / float(self.total)
+        size = int(self.width * percent)
+        bar = "[" + self.symbol * size + ">" + self.remain * (self.width - size - 1) + "]"
+
+        self.args = {
+            "total": self.total * self.num,
+            "bar": bar,
+            "current": current * self.num,
+            "percent": percent * 100,
+            "metrics": metrics
+        }
+        print("\r" + self.fmt % self.args, file=self.output, end="")
+
+    def done(self, step_time: float, fmt=DONE):
+        """
+        :param step_time: 该时间步执行完所用时间
+        :param fmt: 执行完成之后进度条格式
+        """
+        self.args["bar"] = "[" + self.symbol * self.width + "]"
+        self.args["time"] = step_time
+        print("\r" + fmt % self.args + "\n", file=self.output, end="")
