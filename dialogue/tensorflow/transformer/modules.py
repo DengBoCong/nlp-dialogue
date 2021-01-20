@@ -1,3 +1,23 @@
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""TensorFlow版本transformer的模型功能实现，包含train模式、evaluate模式、chat模式
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import time
 import tensorflow as tf
 from dialogue.tensorflow.load_dataset import load_data
@@ -11,7 +31,7 @@ def train(encoder: tf.keras.Model, decoder: tf.keras.Model, optimizer: tf.optimi
           checkpoint: tf.train.CheckpointManager, train_data_path: str, batch_size: int, buffer_size: int,
           max_length: int, checkpoint_save_freq: int, dict_path: str = "", valid_data_split: float = 0.0,
           valid_data_path: str = "", max_train_data_size: int = 0, max_valid_data_size: int = 0,
-          history_img_path: str = ""):
+          history_img_path: str = "") -> dict:
     """ 训练模块
 
     :param encoder: encoder模型
@@ -80,6 +100,34 @@ def train(encoder: tf.keras.Model, decoder: tf.keras.Model, optimizer: tf.optimi
     return history
 
 
+def evaluate(encoder: tf.keras.Model, decoder: tf.keras.Model, train_loss: tf.keras.metrics.Mean,
+             train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy, batch_size: int, buffer_size: int,
+             max_length: int, dict_path: str = "", valid_data_path: str = "", max_valid_data_size: int = 0):
+    """ 验证模块
+
+    :param encoder: encoder模型
+    :param decoder: decoder模型
+    :param train_loss: 损失计算器
+    :param train_accuracy: 精度计算器
+    :param batch_size: Dataset加载批大小
+    :param buffer_size: Dataset加载缓存大小
+    :param max_length: 最大句子长度
+    :param dict_path: 字典路径，若使用phoneme则不用传
+    :param valid_data_path: 验证数据文本路径
+    :param max_valid_data_size: 最大验证数据量
+    :return: 返回历史指标数据
+    """
+    print('训练开始，正在准备数据中')
+    valid_dataset, _, valid_steps_per_epoch, _ = \
+        load_data(dict_path=dict_path, train_data_path=valid_data_path, buffer_size=buffer_size,
+                  batch_size=batch_size, max_length=max_length, max_train_data_size=max_valid_data_size)
+
+    _, _ = _valid_step(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
+                       dataset=valid_dataset, steps_per_epoch=valid_steps_per_epoch, batch_size=batch_size)
+
+    print('验证结束')
+
+
 def _train_step(encoder: tf.keras.Model, decoder: tf.keras.Model, optimizer: tf.optimizers.Adam,
                 train_loss: tf.keras.metrics.Mean, train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy,
                 inp: tf.Tensor, target: tf.Tensor, weight: tf.Tensor = None):
@@ -132,7 +180,7 @@ def _valid_step(encoder: tf.keras.Model, decoder: tf.keras.Model, train_loss: tf
 
     progress_bar = ProgressBar(total=steps_per_epoch, num=batch_size)
 
-    for (batch, (inp, target)) in enumerate(dataset.take(steps_per_epoch)):
+    for (batch, (inp, target, _)) in enumerate(dataset.take(steps_per_epoch)):
         target_input = target[:, :-1]
         target_real = target[:, 1:]
 

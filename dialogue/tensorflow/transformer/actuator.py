@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2021 DengBoCong. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tensorflow版本transformer的实现执行器
+"""TensorFlow版本transformer的实现执行器入口
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -23,11 +23,13 @@ import sys
 import json
 import tensorflow as tf
 from argparse import ArgumentParser
+
 sys.path.append(os.path.abspath(__file__)[:os.path.abspath(__file__).find("\\dialogue\\")])
 import dialogue.tensorflow.transformer.model as transformer
 from dialogue.tensorflow.optimizers import CustomSchedule
 from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
 from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
+from dialogue.tensorflow.transformer.modules import evaluate
 from dialogue.tensorflow.transformer.modules import train
 from dialogue.tensorflow.utils import load_checkpoint
 
@@ -59,14 +61,17 @@ def main():
     parser.add_argument('--start_sign', default='<start>', type=str, required=False, help='序列开始标记')
     parser.add_argument('--end_sign', default='<end>', type=str, required=False, help='序列结束标记')
     parser.add_argument('--unk_sign', default='<unk>', type=str, required=False, help='未登录词')
-    parser.add_argument('--dict_path', default='data\\preprocess\\transformer_dict.json', type=str, required=False, help='字典路径')
+    parser.add_argument('--dict_path', default='data\\preprocess\\transformer_dict.json', type=str, required=False,
+                        help='字典路径')
     parser.add_argument('--checkpoint_dir', default='checkpoints\\tensorflow\\transformer', type=str, required=False,
                         help='检查点路径')
     parser.add_argument('--raw_data_path', default='data\\LCCC.json', type=str, required=False, help='原始数据集路径')
     parser.add_argument('--tokenized_data_path', default='data\\preprocess\\lccc_tokenized.txt', type=str,
                         required=False, help='处理好的多轮分词数据集路径')
     parser.add_argument('--preprocess_data_path', default='data\\preprocess\\single_tokenized.txt', type=str,
-                        required=False, help='处理好的单轮分词数据集路径')
+                        required=False, help='处理好的单轮分词训练用数据集路径')
+    parser.add_argument('--valid_data_path', default='data\\preprocess\\single_tokenized.txt', type=str,
+                        required=False, help='处理好的单轮分词验证评估用数据集路径')
     parser.add_argument('--history_image_dir', default='data\\history\\transformer\\', type=str, required=False,
                         help='数据指标图表保存路径')
 
@@ -111,6 +116,11 @@ def main():
               dict_path=work_path + options['dict_path'], max_train_data_size=options["max_train_data_size"],
               history_img_path=work_path + options["history_image_dir"], valid_data_split=options["valid_data_split"],
               max_valid_data_size=options["max_valid_data_size"], valid_data_path="")
+    elif options["act"] == "evaluate":
+        evaluate(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
+                 batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
+                 dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
+                 valid_data_path=work_path + options["valid_data_path"])
 
 
 if __name__ == '__main__':

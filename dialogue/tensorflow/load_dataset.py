@@ -1,3 +1,23 @@
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""TensorFlow版本Dataset加载模块，内含各模型针对性的以及公用性的数据加载方法
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import os
 import jieba
 import pysolr
@@ -93,10 +113,10 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
     :param max_valid_data_size: 最大验证数据量
     :return: 训练Dataset、验证Dataset、训练数据总共的步数、验证数据总共的步数和检查点前缀
     """
-    print("读取训练对话对...")
     tokenizer = load_tokenizer(dict_path=dict_path)
     train_input, train_target, sample_weights = \
-        _read_data(data_path=train_data_path, num_examples=max_train_data_size, max_length=max_length, tokenizer=tokenizer)
+        _read_data(data_path=train_data_path, num_examples=max_train_data_size, max_length=max_length,
+                   tokenizer=tokenizer)
 
     valid_flag = True  # 是否开启验证标记
     valid_steps_per_epoch = 0
@@ -120,8 +140,8 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
     train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
 
     if valid_flag:
-        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_input, valid_target)).cache().shuffle(
-            buffer_size).prefetch(tf.data.experimental.AUTOTUNE)
+        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_input, valid_target, [[0]] * len(valid_input))) \
+            .cache().shuffle(buffer_size).prefetch(tf.data.experimental.AUTOTUNE)
         valid_dataset = valid_dataset.batch(batch_size, drop_remainder=True)
         valid_steps_per_epoch = len(valid_input) // batch_size
     else:
