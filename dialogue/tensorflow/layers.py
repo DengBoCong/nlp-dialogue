@@ -1,23 +1,46 @@
-import numpy as np
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""TensorFlow版本下的公共layers
+"""
+
 import tensorflow as tf
 
 
-class BahdanauAttention(tf.keras.layers.Layer):
-    def __init__(self, units):
-        super(BahdanauAttention, self).__init__()
-        self.W1 = tf.keras.layers.Dense(units)
-        self.W2 = tf.keras.layers.Dense(units)
-        self.V = tf.keras.layers.Dense(1)
+def bahdanau_attention(units: int, d_type: tf.dtypes.DType = tf.float32,
+                       name: str = "bahdanau_attention") -> tf.keras.Model:
+    """Bahdanau Attention实现
 
-    def call(self, query, values):
-        hidden_with_time_axis = tf.expand_dims(query, 1)
-        score = self.V(tf.nn.tanh(
-            self.W1(values) + self.W2(hidden_with_time_axis)))
-        attention_weights = tf.nn.softmax(score, axis=1)
-        context_vector = attention_weights * values
-        context_vector = tf.reduce_sum(context_vector, axis=1)
+    :param units:
+    :param d_type: 运算精度
+    :param name: 名称
+    """
+    query = tf.keras.Input(shape=(None,), dtype=d_type, name="{}_query".format(name))
+    value = tf.keras.Input(shape=(None, None), dtype=d_type, name="{}_value".format(name))
+    hidden_with_time_axis = tf.expand_dims(query, 1)
 
-        return context_vector, attention_weights
+    state = tf.keras.layers.Dense(units=units, dtype=d_type, name="{}_state_dense".format(name))(value)
+    hidden = tf.keras.layers.Dense(units=units, dtype=d_type, name="{}_hidden_dense".format(name))(
+        hidden_with_time_axis)
+    effect = tf.nn.tanh(x=state + hidden, name="{}_tanh".format(name))
+    score = tf.keras.layers.Dense(units=1, dtype=d_type, name="{}_score_dense")(effect)
+
+    attention_weights = tf.nn.softmax(logits=score, axis=1, name="{}_softmax".format(name))
+    context_vector = attention_weights * value
+    context_vector = tf.reduce_sum(input_tensor=context_vector, axis=1, name="{}_reduce_sum".format(name))
+
+    return tf.keras.Model(inputs=[query, value], outputs=[context_vector, attention_weights])
 
 
 # 点积注意力
@@ -105,9 +128,3 @@ class MultiHeadAttention(tf.keras.layers.Layer):
         output = self.dense(concat_attention)  # (batch_size, seq_len_q, d_model)
 
         return output, attention_weights
-
-
-
-
-
-

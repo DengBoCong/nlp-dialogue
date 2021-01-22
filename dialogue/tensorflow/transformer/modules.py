@@ -147,7 +147,8 @@ def inference(encoder: tf.keras.Model, decoder: tf.keras.Model, max_length: int,
     """
     tokenizer = load_tokenizer(dict_path)
 
-    enc_input = preprocess_request(sentence=request, tokenizer=tokenizer, max_length=max_length)
+    enc_input = preprocess_request(sentence=request, tokenizer=tokenizer,
+                                   max_length=max_length, start_sign=start_sign, end_sign=end_sign)
     enc_output, padding_mask = encoder(inputs=enc_input)
     dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
 

@@ -105,15 +105,19 @@ def load_tokenizer(dict_path: str) -> tf.keras.preprocessing.text.Tokenizer:
     return tokenizer
 
 
-def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.preprocessing.text.Tokenizer) -> tf.Tensor:
+def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.preprocessing.text.Tokenizer,
+                       start_sign: str = "<start>", end_sign: str = "<end>") -> tf.Tensor:
     """ 用于处理回复功能的输入句子，返回模型使用的序列
 
     :param sentence: 待处理句子
     :param max_length: 单个句子最大长度
     :param tokenizer: 分词器
+    :param start_sign: 句子开始标记
+    :param end_sign: 句子结束标记
     :return: 处理好的句子和decoder输入
     """
     sentence = " ".join(jieba.cut(sentence))
+    sentence = start_sign + " " + sentence + " " + end_sign
 
     inputs = tokenizer.texts_to_sequences([sentence])
     inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding='post')
