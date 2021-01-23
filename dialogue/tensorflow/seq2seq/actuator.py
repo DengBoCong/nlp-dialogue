@@ -25,10 +25,10 @@ from argparse import ArgumentParser
 import dialogue.tensorflow.seq2seq.model as seq2seq
 from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
 from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
-from dialogue.tensorflow.seq2seq.modules import train
-from dialogue.tensorflow.seq2seq.modules import evaluate
-from dialogue.tensorflow.seq2seq.modules import inference
+from dialogue.tensorflow.seq2seq.modules import Seq2SeqModule
 from dialogue.tensorflow.utils import load_checkpoint
+from dialogue.tensorflow.utils import load_tokenizer
+from dialogue.tools import show_history
 
 
 def tf_seq2seq() -> None:
@@ -90,13 +90,17 @@ def tf_seq2seq() -> None:
         enc_units=options["units"], num_layers=options["decoder_layers"], cell_type=options["cell_type"]
     )
 
-    train_loss = tf.keras.metrics.Mean(name="train_loss")
-    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
+    loss_metric = tf.keras.metrics.Mean(name="loss_metric")
+    accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy_metric")
     optimizer = tf.optimizers.Adam(name="optimizer")
     checkpoint_manager = load_checkpoint(
         checkpoint_dir=work_path + options["checkpoint_dir"], execute_type=execute_type,
         encoder=encoder, decoder=decoder, checkpoint_save_size=options["checkpoint_save_size"]
     )
+
+    modules = Seq2SeqModule(loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
+                            buffer_size=options["buffer_size"], max_length=options["max_length"],
+                            dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder)
 
     if execute_type == "pre_treat":
         preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options["resource_data_path"],
@@ -107,29 +111,33 @@ def tf_seq2seq() -> None:
                                max_data_size=options["max_train_data_size"], vocab_size=options["vocab_size"],
                                qa_data_path=work_path + options["preprocess_data_path"])
     elif execute_type == "train":
-        train(encoder=encoder, decoder=decoder, optimizer=optimizer, epochs=options["epochs"], train_loss=train_loss,
-              train_accuracy=train_accuracy, checkpoint=checkpoint_manager, max_length=options["max_length"],
-              train_data_path=work_path + options["preprocess_data_path"], batch_size=options["batch_size"],
-              buffer_size=options["buffer_size"], checkpoint_save_freq=options["checkpoint_save_freq"],
-              dict_path=work_path + options["dict_path"], max_train_data_size=options["max_train_data_size"],
-              history_img_path=work_path + options["history_image_dir"], valid_data_split=options["valid_data_split"],
-              max_valid_data_size=options["max_valid_data_size"], valid_data_path="")
-    elif execute_type == "evaluate":
-        evaluate(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
-                 batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
-                 dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
-                 valid_data_path=work_path + options["valid_data_path"])
-    elif execute_type == "chat":
-        print("Agent: 你好！结束聊天请输入ESC。")
-        while True:
-            request = input("User: ")
-            if request == "ESC":
-                print("Agent: 再见！")
-                exit(0)
-            response = inference(encoder=encoder, decoder=decoder, max_length=options["max_length"], request=request,
-                                 beam_size=options["beam_size"], dict_path=work_path + options["dict_path"],
-                                 start_sign=options["start_sign"], end_sign=options["end_sign"])
-            print("Agent: ", response)
+        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': []}
+        tokenizer = load_tokenizer(dict_path=work_path + options["dict_path"])
+        history = modules.train(
+            optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
+            train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
+            checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
+            max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
+            remain={"start_sign": tokenizer.word_index.get(options["start_sign"])}
+        )
+        show_history(history=history, valid_freq=options["checkpoint_save_freq"],
+                     save_dir=work_path + options["history_image_dir"])
+    # elif execute_type == "evaluate":
+    #     evaluate(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
+    #              batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
+    #              dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
+    #              valid_data_path=work_path + options["valid_data_path"])
+    # elif execute_type == "chat":
+    #     print("Agent: 你好！结束聊天请输入ESC。")
+    #     while True:
+    #         request = input("User: ")
+    #         if request == "ESC":
+    #             print("Agent: 再见！")
+    #             exit(0)
+    #         response = inference(encoder=encoder, decoder=decoder, max_length=options["max_length"], request=request,
+    #                              beam_size=options["beam_size"], dict_path=work_path + options["dict_path"],
+    #                              start_sign=options["start_sign"], end_sign=options["end_sign"])
+    #         print("Agent: ", response)
     else:
         parser.error(msg="")
 

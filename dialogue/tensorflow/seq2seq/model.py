@@ -103,7 +103,8 @@ def decoder(vocab_size: int, embedding_dim: int, dec_units: int, enc_units: int,
 
     embeddings = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim,
                                            dtype=d_type, name="{}_embedding".format(name))(inputs)
-    context_vector, attention_weight = bahdanau_attention(dec_units, d_type=d_type)(dec_hidden, enc_output)
+    context_vector, attention_weight = bahdanau_attention(
+        units=dec_units, d_type=d_type, query_dim=enc_units, value_dim=enc_units)(inputs=[dec_hidden, enc_output])
     outputs = tf.concat(values=[tf.expand_dims(input=context_vector, axis=1), embeddings], axis=-1)
 
     for i in range(num_layers):

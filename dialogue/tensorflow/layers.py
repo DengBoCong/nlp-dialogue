@@ -18,23 +18,25 @@
 import tensorflow as tf
 
 
-def bahdanau_attention(units: int, d_type: tf.dtypes.DType = tf.float32,
+def bahdanau_attention(units: int, query_dim: int, value_dim: int, d_type: tf.dtypes.DType = tf.float32,
                        name: str = "bahdanau_attention") -> tf.keras.Model:
     """Bahdanau Attention实现
 
     :param units:
+    :param query_dim: query最后一个维度
+    :param value_dim: value最后一个维度
     :param d_type: 运算精度
     :param name: 名称
     """
-    query = tf.keras.Input(shape=(None,), dtype=d_type, name="{}_query".format(name))
-    value = tf.keras.Input(shape=(None, None), dtype=d_type, name="{}_value".format(name))
+    query = tf.keras.Input(shape=(query_dim,), dtype=d_type, name="{}_query".format(name))
+    value = tf.keras.Input(shape=(None, value_dim), dtype=d_type, name="{}_value".format(name))
     hidden_with_time_axis = tf.expand_dims(query, 1)
 
     state = tf.keras.layers.Dense(units=units, dtype=d_type, name="{}_state_dense".format(name))(value)
     hidden = tf.keras.layers.Dense(units=units, dtype=d_type, name="{}_hidden_dense".format(name))(
         hidden_with_time_axis)
     effect = tf.nn.tanh(x=state + hidden, name="{}_tanh".format(name))
-    score = tf.keras.layers.Dense(units=1, dtype=d_type, name="{}_score_dense")(effect)
+    score = tf.keras.layers.Dense(units=1, dtype=d_type, name="{}_score_dense".format(name))(effect)
 
     attention_weights = tf.nn.softmax(logits=score, axis=1, name="{}_softmax".format(name))
     context_vector = attention_weights * value
