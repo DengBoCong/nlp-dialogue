@@ -25,63 +25,11 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from dialogue.tensorflow.utils import load_tokenizer
 
 
-def _create_dataset(data_path: str, num_examples: int):
-    """
-    用于将分词文本读入内存，并整理成问答对
-    :param data_path: 分词文本路径
-    :param num_examples: 读取的数据量大小
-    :return: 整理好的问答对和样本权重
-    """
-    if not os.path.exists(data_path):
-        print('不存在已经分词好的文件，请先执行pre_treat模式')
-        exit(0)
-
-    with open(data_path, 'r', encoding="utf-8") as file:
-        lines = file.read().strip().split('\n')
-        sample_weights = []
-        qa_pairs = []
-        if num_examples != 0:
-            lines = lines[:num_examples]
-
-        for line in lines:
-            # 文本数据中的问答对权重通过在问答对尾部添加“<|>”配置
-            temp = line.split("<|>")
-            qa_pairs.append([sentence for sentence in temp[0].split('\t')])
-            # 如果没有配置对应问答对权重，则默认为1.
-            if len(temp) == 1:
-                sample_weights.append(float(1))
-            else:
-                sample_weights.append(float(temp[1]))
-
-    return zip(*qa_pairs), sample_weights
-
-
-def _read_data(data_path: str, num_examples: int, max_length: int, tokenizer: tf.keras.preprocessing.text.Tokenizer):
-    """
-    读取数据，将input和target进行分词后返回
-    :param data_path: 分词文本路径
-    :param num_examples: 读取的数据量大小
-    :param max_length: 最大序列长度
-    :param tokenizer: 传入现有的分词器，默认重新生成
-    :return: 输入序列张量、目标序列张量和分词器
-    """
-    (input_lang, target_lang), diag_weight = _create_dataset(data_path, num_examples)
-    input_tensor = tokenizer.texts_to_sequences(input_lang)
-    target_tensor = tokenizer.texts_to_sequences(target_lang)
-
-    input_tensor = tf.keras.preprocessing.sequence.pad_sequences(input_tensor, maxlen=max_length,
-                                                                 padding='post')
-    target_tensor = tf.keras.preprocessing.sequence.pad_sequences(target_tensor, maxlen=max_length,
-                                                                  padding='post')
-
-    return input_tensor, target_tensor, diag_weight
-
-
 def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size: int,
               max_length: int, valid_data_split: float = 0.0, valid_data_path: str = "",
-              max_train_data_size: int = 0, max_valid_data_size: int = 0):
-    """
-    数据加载方法，含四个元素的元组，包括如下：
+              max_train_data_size: int = 0, max_valid_data_size: int = 0) -> tuple:
+    """ 数据加载方法
+
     :param dict_path: 字典路径
     :param train_data_path: 文本数据路径
     :param buffer_size: Dataset加载缓存大小
@@ -130,6 +78,59 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
     steps_per_epoch = len(train_input) // batch_size
 
     return train_dataset, valid_dataset, steps_per_epoch, valid_steps_per_epoch
+
+
+def _create_dataset(data_path: str, num_examples: int) -> tuple:
+    """ 用于将分词文本读入内存，并整理成问答对
+
+    :param data_path: 分词文本路径
+    :param num_examples: 读取的数据量大小
+    :return: 整理好的问答对和样本权重
+    """
+    if not os.path.exists(data_path):
+        print('不存在已经分词好的文件，请先执行pre_treat模式')
+        exit(0)
+
+    with open(data_path, 'r', encoding="utf-8") as file:
+        lines = file.read().strip().split('\n')
+        sample_weights = []
+        qa_pairs = []
+        if num_examples != 0:
+            lines = lines[:num_examples]
+
+        for line in lines:
+            # 文本数据中的问答对权重通过在问答对尾部添加“<|>”配置
+            temp = line.split("<|>")
+            qa_pairs.append([sentence for sentence in temp[0].split('\t')])
+            # 如果没有配置对应问答对权重，则默认为1.
+            if len(temp) == 1:
+                sample_weights.append(float(1))
+            else:
+                sample_weights.append(float(temp[1]))
+
+    return zip(*qa_pairs), sample_weights
+
+
+def _read_data(data_path: str, num_examples: int, max_length: int,
+               tokenizer: tf.keras.preprocessing.text.Tokenizer) -> tuple:
+    """ 读取数据，将input和target进行分词后返回
+
+    :param data_path: 分词文本路径
+    :param num_examples: 读取的数据量大小
+    :param max_length: 最大序列长度
+    :param tokenizer: 传入现有的分词器，默认重新生成
+    :return: 输入序列张量、目标序列张量和分词器
+    """
+    (input_lang, target_lang), diag_weight = _create_dataset(data_path, num_examples)
+    input_tensor = tokenizer.texts_to_sequences(input_lang)
+    target_tensor = tokenizer.texts_to_sequences(target_lang)
+
+    input_tensor = tf.keras.preprocessing.sequence.pad_sequences(input_tensor, maxlen=max_length,
+                                                                 padding='post')
+    target_tensor = tf.keras.preprocessing.sequence.pad_sequences(target_tensor, maxlen=max_length,
+                                                                  padding='post')
+
+    return input_tensor, target_tensor, diag_weight
 
 
 def smn_load_train_data(dict_fn: str, data_fn: str, checkpoint_dir: str, buffer_size: int,

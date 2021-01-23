@@ -26,10 +26,9 @@ import dialogue.tensorflow.transformer.model as transformer
 from dialogue.tensorflow.optimizers import CustomSchedule
 from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
 from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
-from dialogue.tensorflow.transformer.modules import evaluate
-from dialogue.tensorflow.transformer.modules import inference
-from dialogue.tensorflow.transformer.modules import train
+from dialogue.tensorflow.transformer.modules import TransformerModule
 from dialogue.tensorflow.utils import load_checkpoint
+from dialogue.tools import show_history
 
 
 def tf_transformer() -> None:
@@ -95,13 +94,19 @@ def tf_transformer() -> None:
                                   num_heads=options["num_heads"], dropout=options["dropout"])
 
     learning_rate = CustomSchedule(d_model=options["embedding_dim"])
-    train_loss = tf.keras.metrics.Mean(name="train_loss")
-    train_accuracy = tf.keras.metrics.SparseCategoricalAccuracy(name="train_accuracy")
+    loss_metric = tf.keras.metrics.Mean(name="loss_metric")
+    accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy_metric")
     optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1=options["learning_rate_beta_1"],
                                    beta_2=options["learning_rate_beta_2"], epsilon=1e-9)
     checkpoint_manager = load_checkpoint(checkpoint_dir=work_path + options["checkpoint_dir"],
                                          execute_type=execute_type, encoder=encoder, decoder=decoder,
                                          checkpoint_save_size=options["checkpoint_save_size"])
+
+    modules = TransformerModule(
+        loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
+        buffer_size=options["buffer_size"], max_length=options["max_length"],
+        dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder
+    )
 
     if execute_type == "pre_treat":
         preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options["raw_data_path"],
@@ -112,18 +117,19 @@ def tf_transformer() -> None:
                                max_data_size=options["max_train_data_size"], vocab_size=options["vocab_size"],
                                qa_data_path=work_path + options["preprocess_data_path"])
     elif execute_type == "train":
-        train(encoder=encoder, decoder=decoder, optimizer=optimizer, epochs=options["epochs"], train_loss=train_loss,
-              train_accuracy=train_accuracy, checkpoint=checkpoint_manager, max_length=options["max_length"],
-              train_data_path=work_path + options["preprocess_data_path"], batch_size=options["batch_size"],
-              buffer_size=options["buffer_size"], checkpoint_save_freq=options["checkpoint_save_freq"],
-              dict_path=work_path + options["dict_path"], max_train_data_size=options["max_train_data_size"],
-              history_img_path=work_path + options["history_image_dir"], valid_data_split=options["valid_data_split"],
-              max_valid_data_size=options["max_valid_data_size"], valid_data_path="")
+        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': []}
+        history = modules.train(
+            optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
+            train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
+            checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
+            max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
+        )
+        show_history(history=history, valid_freq=options["checkpoint_save_freq"],
+                     save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
-        evaluate(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
-                 batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
-                 dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
-                 valid_data_path=work_path + options["valid_data_path"])
+        modules.evaluate(
+            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"]
+        )
     elif execute_type == "chat":
         print("Agent: 你好！结束聊天请输入ESC。")
         while True:
@@ -131,12 +137,11 @@ def tf_transformer() -> None:
             if request == "ESC":
                 print("Agent: 再见！")
                 exit(0)
-            response = inference(encoder=encoder, decoder=decoder, max_length=options["max_length"], request=request,
-                                 beam_size=options["beam_size"], dict_path=work_path + options["dict_path"],
-                                 start_sign=options["start_sign"], end_sign=options["end_sign"])
+            response = modules.inference(request=request, beam_size=options["beam_size"],
+                                         start_sign=options["start_sign"], end_sign=options["end_sign"])
             print("Agent: ", response)
     else:
-        parser.error(msg="")
+        parser.error(message="")
 
 
 if __name__ == "__main__":

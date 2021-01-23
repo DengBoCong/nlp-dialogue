@@ -41,17 +41,17 @@ def show_history(history: dict, save_dir: str, valid_freq: int):
     :param valid_freq: 验证频率
     :return: 无返回值
     """
-    train_x_axis = [i + 1 for i in range(len(history['loss']))]
-    valid_x_axis = [(i + 1) * valid_freq for i in range(len(history['val_loss']))]
+    train_x_axis = [i + 1 for i in range(len(history['train_loss']))]
+    valid_x_axis = [(i + 1) * valid_freq for i in range(len(history['valid_loss']))]
 
     figure, axis = plt.subplots(1, 1)
     tick_spacing = 1
-    if len(history['loss']) > 20:
-        tick_spacing = len(history['loss']) // 20
-    plt.plot(train_x_axis, history['loss'], label='loss', marker='.')
-    plt.plot(train_x_axis, history['accuracy'], label='accuracy', marker='.')
-    plt.plot(valid_x_axis, history['val_loss'], label='val_loss', marker='.', linestyle='--')
-    plt.plot(valid_x_axis, history['val_accuracy'], label='val_accuracy', marker='.', linestyle='--')
+    if len(history['train_loss']) > 20:
+        tick_spacing = len(history['train_loss']) // 20
+    plt.plot(train_x_axis, history['train_loss'], label='train_loss', marker='.')
+    plt.plot(train_x_axis, history['train_accuracy'], label='train_accuracy', marker='.')
+    plt.plot(valid_x_axis, history['valid_loss'], label='valid_loss', marker='.', linestyle='--')
+    plt.plot(valid_x_axis, history['valid_accuracy'], label='valid_accuracy', marker='.', linestyle='--')
     plt.xticks(valid_x_axis)
     plt.xlabel('epoch')
     plt.legend()
@@ -120,3 +120,18 @@ class ProgressBar(object):
         self.args["bar"] = "[" + self.symbol * self.width + "]"
         self.args["time"] = step_time
         print("\r" + fmt % self.args + "\n", file=self.output, end="")
+
+
+def get_dict_string(data: dict, prefix: str = "- ", precision: str = ": {:.4f} "):
+    """将字典数据转换成key——value字符串
+
+    :param data: 字典数据
+    :param prefix: 组合前缀
+    :param precision: key——value打印精度
+    :return: 字符串
+    """
+    result = ""
+    for key, value in data.items():
+        result += (prefix + key + precision).format(value)
+
+    return result
