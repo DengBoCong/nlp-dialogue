@@ -23,7 +23,6 @@ import tensorflow as tf
 from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
 from dialogue.tensorflow.optimizers import loss_func_mask
-from dialogue.tensorflow.optimizers import loss_function
 from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import ProgressBar
@@ -34,8 +33,8 @@ class Seq2SeqModule(Modules):
                  batch_size: int, buffer_size: int, max_length: int, dict_path: str = "", model: tf.keras.Model = None,
                  encoder: tf.keras.Model = None, decoder: tf.keras.Model = None):
         super(Seq2SeqModule, self).__init__(loss_metric=loss_metric, accuracy_metric=accuracy_metric,
-                                                batch_size=batch_size, buffer_size=buffer_size, max_length=max_length,
-                                                dict_path=dict_path, model=model, encoder=encoder, decoder=decoder)
+                                            batch_size=batch_size, buffer_size=buffer_size, max_length=max_length,
+                                            dict_path=dict_path, model=model, encoder=encoder, decoder=decoder)
 
     def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, train_loss: tf.keras.metrics.Mean,
                     train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy, *args, **kwargs) -> dict:
@@ -47,20 +46,21 @@ class Seq2SeqModule(Modules):
         :param train_accuracy: 精度计算器
         :return: 返回所得指标字典
         """
-        loss = 0
         with tf.GradientTape() as tape:
             enc_output, enc_hidden = self.encoder(inputs=batch_dataset[0])
             dec_hidden = enc_hidden
             dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
-            for t in range(1, batch_dataset[1].shape[1]):
-                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
-                loss += loss_function(real=batch_dataset[1][:, t], pred=predictions, weights=batch_dataset[2])
 
+            loss = 0
+            for t in range(1, self.max_length):
                 if sum(batch_dataset[1][:, t]) == 0:
                     break
 
-                dec_input = tf.expand_dims(batch_dataset[1][:, t], 1)
+                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
+                loss += loss_func_mask(real=batch_dataset[1][:, t], pred=predictions, weights=batch_dataset[2])
                 train_accuracy(batch_dataset[1][:, t], predictions)
+
+                dec_input = tf.expand_dims(batch_dataset[1][:, t], 1)
 
         train_loss(loss)
         variables = self.encoder.trainable_variables + self.decoder.trainable_variables
@@ -89,16 +89,22 @@ class Seq2SeqModule(Modules):
         progress_bar = ProgressBar(total=steps_per_epoch, num=batch_size)
 
         for (batch, (inp, target, _)) in enumerate(dataset.take(steps_per_epoch)):
-            target_input = target[:, :-1]
-            target_real = target[:, 1:]
+            enc_output, enc_hidden = self.encoder(inputs=inp)
+            dec_hidden = enc_hidden
+            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
-            encoder_outputs, padding_mask = self.encoder(inputs=inp)
-            predictions = self.decoder(inputs=[target_input, encoder_outputs, padding_mask])
-            loss = loss_func_mask(target_real, predictions)
+            loss = 0
+            for t in range(1, self.max_length):
+                if sum(target[:, t]) == 0:
+                    break
+
+                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
+                loss += loss_func_mask(real=target[:, t], pred=predictions)
+                valid_accuracy(target[:, t], predictions)
+
+                dec_input = tf.expand_dims(target[:, t], 1)
 
             valid_loss(loss)
-            valid_accuracy(target_real, predictions)
-
             progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
                          .format(valid_loss.result(), valid_accuracy.result()))
 

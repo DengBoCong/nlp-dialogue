@@ -56,9 +56,10 @@ def tf_seq2seq() -> None:
                         type=str, required=False, help='处理好的多轮分词数据集路径')
     parser.add_argument('--preprocess_data_path', default='data\\preprocess\\single_tokenized.txt',
                         type=str, required=False, help='处理好的单轮分词数据集路径')
+    parser.add_argument("--valid_data_path", default="data\\preprocess\\single_tokenized.txt", type=str,
+                        required=False, help="处理好的单轮分词验证评估用数据集路径")
     parser.add_argument('--history_image_dir', default='data\\history\\seq2seq\\', type=str, required=False,
                         help='数据指标图表保存路径')
-    parser.add_argument('--valid_data_file', default='', type=str, required=False, help='验证数据集路径')
     parser.add_argument('--valid_freq', default=5, type=int, required=False, help='验证频率')
     parser.add_argument('--checkpoint_save_freq', default=2, type=int, required=False, help='检查点保存频率')
     parser.add_argument('--checkpoint_save_size', default=3, type=int, required=False, help='单轮训练中检查点保存数量')
@@ -122,11 +123,10 @@ def tf_seq2seq() -> None:
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])
-    # elif execute_type == "evaluate":
-    #     evaluate(encoder=encoder, decoder=decoder, train_loss=train_loss, train_accuracy=train_accuracy,
-    #              batch_size=options["batch_size"], buffer_size=options["buffer_size"], max_length=options["max_length"],
-    #              dict_path=work_path + options["dict_path"], max_valid_data_size=options["max_valid_data_size"],
-    #              valid_data_path=work_path + options["valid_data_path"])
+    elif execute_type == "evaluate":
+        modules.evaluate(
+            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"]
+        )
     # elif execute_type == "chat":
     #     print("Agent: 你好！结束聊天请输入ESC。")
     #     while True:
