@@ -62,7 +62,7 @@ def tf_seq2seq() -> None:
                         help='数据指标图表保存路径')
     parser.add_argument('--valid_freq', default=5, type=int, required=False, help='验证频率')
     parser.add_argument('--checkpoint_save_freq', default=2, type=int, required=False, help='检查点保存频率')
-    parser.add_argument('--checkpoint_save_size', default=3, type=int, required=False, help='单轮训练中检查点保存数量')
+    parser.add_argument('--checkpoint_save_size', default=1, type=int, required=False, help='单轮训练中检查点保存数量')
     parser.add_argument('--batch_size', default=32, type=int, required=False, help='batch大小')
     parser.add_argument('--buffer_size', default=20000, type=int, required=False, help='Dataset加载缓冲大小')
     parser.add_argument('--beam_size', default=3, type=int, required=False, help='BeamSearch的beam大小')
@@ -127,17 +127,16 @@ def tf_seq2seq() -> None:
         modules.evaluate(
             max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"]
         )
-    # elif execute_type == "chat":
-    #     print("Agent: 你好！结束聊天请输入ESC。")
-    #     while True:
-    #         request = input("User: ")
-    #         if request == "ESC":
-    #             print("Agent: 再见！")
-    #             exit(0)
-    #         response = inference(encoder=encoder, decoder=decoder, max_length=options["max_length"], request=request,
-    #                              beam_size=options["beam_size"], dict_path=work_path + options["dict_path"],
-    #                              start_sign=options["start_sign"], end_sign=options["end_sign"])
-    #         print("Agent: ", response)
+    elif execute_type == "chat":
+        print("Agent: 你好！结束聊天请输入ESC。")
+        while True:
+            request = input("User: ")
+            if request == "ESC":
+                print("Agent: 再见！")
+                exit(0)
+            response = modules.inference(request=request, beam_size=options["beam_size"],
+                                         start_sign=options["start_sign"], end_sign=options["end_sign"])
+            print("Agent: ", response)
     else:
         parser.error(msg="")
 

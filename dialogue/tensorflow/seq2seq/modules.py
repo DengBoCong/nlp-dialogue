@@ -47,8 +47,7 @@ class Seq2SeqModule(Modules):
         :return: 返回所得指标字典
         """
         with tf.GradientTape() as tape:
-            enc_output, enc_hidden = self.encoder(inputs=batch_dataset[0])
-            dec_hidden = enc_hidden
+            enc_output, states = self.encoder(inputs=batch_dataset[0])
             dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
             loss = 0
@@ -56,7 +55,7 @@ class Seq2SeqModule(Modules):
                 if sum(batch_dataset[1][:, t]) == 0:
                     break
 
-                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
+                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
                 loss += loss_func_mask(real=batch_dataset[1][:, t], pred=predictions, weights=batch_dataset[2])
                 train_accuracy(batch_dataset[1][:, t], predictions)
 
@@ -125,24 +124,23 @@ class Seq2SeqModule(Modules):
 
         enc_input = preprocess_request(sentence=request, tokenizer=tokenizer,
                                        max_length=self.max_length, start_sign=start_sign, end_sign=end_sign)
-        enc_output, padding_mask = self.encoder(inputs=enc_input)
+        enc_output, states = self.encoder(inputs=enc_input)
         dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
 
         beam_search_container = BeamSearch(beam_size=beam_size, max_length=self.max_length, worst_score=0)
-        beam_search_container.reset(enc_output=enc_output, dec_input=dec_input, remain=padding_mask)
-        enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
+        beam_search_container.reset(enc_output=enc_output, dec_input=dec_input, remain=states)
+        enc_output, dec_input, states = beam_search_container.get_search_inputs()
 
         for t in range(self.max_length):
-            predictions = self.decoder(inputs=[dec_input, enc_output, padding_mask])
+            predictions, _, _ = self.decoder(inputs=[dec_input, enc_output, states])
             predictions = tf.nn.softmax(predictions, axis=-1)
-            predictions = predictions[:, -1:, :]
-            predictions = tf.squeeze(predictions, axis=1)
 
             beam_search_container.expand(predictions=predictions, end_sign=tokenizer.word_index.get(end_sign))
-            # 注意了，如果BeamSearch容器里的beam_size为0了，说明已经找到了相应数量的结果，直接跳出循环
             if beam_search_container.beam_size == 0:
                 break
-            enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
+
+            enc_output, dec_input, states = beam_search_container.get_search_inputs()
+            dec_input = tf.expand_dims(input=dec_input[:, -1], axis=-1)
 
         beam_search_result = beam_search_container.get_result(top_k=3)
         result = ''

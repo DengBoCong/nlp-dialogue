@@ -50,7 +50,7 @@ class BeamSearch(object):
         """
         return len(self.candidates)
 
-    def reset(self, enc_output: tf.Tensor, dec_input: tf.Tensor, remain: tf.Tensor):
+    def reset(self, enc_output: tf.Tensor, dec_input: tf.Tensor, remain: tf.Tensor) -> None:
         """重置搜索
 
         :param enc_output: 已经序列化的输入句子
@@ -69,7 +69,7 @@ class BeamSearch(object):
         self.result = []  # 用来保存已经遇到结束符的序列
         self.result_plus = []  # 用来保存已经遇到结束符的带概率分布的序列元素为tensor, tensor的shape为(seq_len, vocab_size)
 
-    def get_search_inputs(self):
+    def get_search_inputs(self) -> tuple:
         """为下一步预测生成输入
 
         :return: enc_output, dec_inputs, remain
@@ -77,16 +77,15 @@ class BeamSearch(object):
         # 生成多beam输入
         enc_output = self.enc_output
         remain = self.remain
-        temp = self.candidates[0][1]
+        self.dec_inputs = self.candidates[0][1]
         for i in range(1, len(self)):
             enc_output = tf.concat([enc_output, self.enc_output], 0)
             remain = tf.concat([remain, self.remain], 0)
-            temp = tf.concat([temp, self.candidates[i][1]], axis=0)
-        self.dec_inputs = copy.deepcopy(temp)
+            self.dec_inputs = tf.concat([self.dec_inputs, self.candidates[i][1]], axis=0)
 
         return enc_output, self.dec_inputs, remain
 
-    def _reduce_end(self, end_sign):
+    def _reduce_end(self, end_sign: str) -> None:
         """ 当序列遇到了结束token，需要将该序列从容器中移除
 
         :param end_sign: 句子结束标记
@@ -95,13 +94,13 @@ class BeamSearch(object):
         for idx, (s, dec) in enumerate(self.candidates):
             temp = dec.numpy()
             if temp[0][-1] == end_sign:
-                self.result.append((self.candidates[idx][0], self.candidates[idx][1]))
+                self.result.append(self.candidates[idx])
                 self.result_plus.append(self.candidates_plus[idx])
                 del self.candidates[idx]
                 del self.candidates_plus[idx]
                 self.beam_size -= 1
 
-    def expand(self, predictions, end_sign):
+    def expand(self, predictions, end_sign) -> None:
         """ 根据预测结果对候选进行扩展
         往容器中添加预测结果，在本方法中对预测结果进行整理、排序的操作
 
@@ -124,9 +123,8 @@ class BeamSearch(object):
                 predictions[i][token_index] = 0
                 # 判断容器容量以及分数比较
                 if len(self) < self.beam_size or score > self.worst_score:
-                    self.candidates.append(
-                        (score, tf.concat([prev_candidates[i][1], tf.constant([[token_index.numpy()]], shape=(1, 1))],
-                                          axis=-1)))
+                    self.candidates.append((score, tf.concat(
+                        [prev_candidates[i][1], tf.constant([[token_index.numpy()]], shape=(1, 1))], axis=-1)))
                     if len(prev_candidates_plus) == 0:
                         self.candidates_plus.append((score, predictions_plus))
                     else:
@@ -141,16 +139,18 @@ class BeamSearch(object):
                         self.worst_score = min(score, self.worst_score)
         self._reduce_end(end_sign=end_sign)
 
-    def get_result(self, top_k=1):
+    def get_result(self, top_k=1) -> list:
         """获得概率最高的top_k个结果
 
         :param top_k: 输出结果数量
         :return: 概率最高的top_k个结果
         """
+        if not self.result:
+            self.result = self.candidates
         results = [element[1] for element in sorted(self.result)[-top_k:]]
         return results
 
-    def get_result_plus(self, top_k=1):
+    def get_result_plus(self, top_k=1) -> list:
         """获得概率最高的top_k个结果
 
         :param top_k: 输出结果数量
