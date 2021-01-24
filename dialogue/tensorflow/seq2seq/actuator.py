@@ -46,7 +46,7 @@ def tf_seq2seq() -> None:
     parser.add_argument('--decoder_layers', default=2, type=int, required=False, help='decoder的层数')
     parser.add_argument('--max_train_data_size', default=0, type=int, required=False, help='用于训练的最大数据大小')
     parser.add_argument('--max_valid_data_size', default=0, type=int, required=False, help='用于验证的最大数据大小')
-    parser.add_argument('--max_length', default=40, type=int, required=False, help='单个序列的最大长度')
+    parser.add_argument('--max_sentence', default=40, type=int, required=False, help='单个序列的最大长度')
     parser.add_argument('--dict_path', default='data\\preprocess\\seq2seq_dict.json',
                         type=str, required=False, help='字典路径')
     parser.add_argument('--checkpoint_dir', default='checkpoints\\tensorflow\\seq2seq',
@@ -99,9 +99,10 @@ def tf_seq2seq() -> None:
         encoder=encoder, decoder=decoder, checkpoint_save_size=options["checkpoint_save_size"]
     )
 
-    modules = Seq2SeqModule(loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
-                            buffer_size=options["buffer_size"], max_length=options["max_length"],
-                            dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder)
+    modules = Seq2SeqModule(
+        loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
+        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], data_type="read_single_data",
+        dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder)
 
     if execute_type == "pre_treat":
         preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options["resource_data_path"],
@@ -119,13 +120,15 @@ def tf_seq2seq() -> None:
             train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
             checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
-            remain={"start_sign": tokenizer.word_index.get(options["start_sign"])}
+            start_sign=tokenizer.word_index.get(options["start_sign"])
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
+        tokenizer = load_tokenizer(dict_path=work_path + options["dict_path"])
         modules.evaluate(
-            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"]
+            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"],
+            start_sign=tokenizer.word_index.get(options["start_sign"])
         )
     elif execute_type == "chat":
         print("Agent: 你好！结束聊天请输入ESC。")

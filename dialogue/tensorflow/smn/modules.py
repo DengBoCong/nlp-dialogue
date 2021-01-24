@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""seq2seq的模型功能实现，包含train模式、evaluate模式、chat模式
+"""smn的模型功能实现，包含train模式、evaluate模式、chat模式
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -28,11 +28,11 @@ from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import ProgressBar
 
 
-class Seq2SeqModule(Modules):
+class SMNModule(Modules):
     def __init__(self, loss_metric: tf.keras.metrics.Mean, accuracy_metric: tf.keras.metrics.SparseCategoricalAccuracy,
                  batch_size: int, buffer_size: int, max_sentence: int, data_type: str, dict_path: str = "",
                  model: tf.keras.Model = None, encoder: tf.keras.Model = None, decoder: tf.keras.Model = None):
-        super(Seq2SeqModule, self).__init__(
+        super(SMNModule, self).__init__(
             loss_metric=loss_metric, accuracy_metric=accuracy_metric, data_type=data_type, batch_size=batch_size,
             buffer_size=buffer_size, max_sentence=max_sentence, dict_path=dict_path, model=model, encoder=encoder,
             decoder=decoder
@@ -49,24 +49,15 @@ class Seq2SeqModule(Modules):
         :return: 返回所得指标字典
         """
         with tf.GradientTape() as tape:
-            enc_output, states = self.encoder(inputs=batch_dataset[0])
-            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
-
-            loss = 0
-            for t in range(1, self.max_sentence):
-                if sum(batch_dataset[1][:, t]) == 0:
-                    break
-
-                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
-                loss += loss_func_mask(real=batch_dataset[1][:, t], pred=predictions, weights=batch_dataset[2])
-                train_accuracy(batch_dataset[1][:, t], predictions)
-
-                dec_input = tf.expand_dims(batch_dataset[1][:, t], 1)
+            scores = self.model(inputs=[batch_dataset[0], batch_dataset[1]])
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(
+                from_logits=True, reduction=tf.keras.losses.Reduction.AUTO
+            )(batch_dataset[2], scores)
 
         train_loss(loss)
-        variables = self.encoder.trainable_variables + self.decoder.trainable_variables
-        gradients = tape.gradient(target=loss, sources=variables)
-        optimizer.apply_gradients(zip(gradients, variables))
+        train_accuracy(batch_dataset[2], scores)
+        gradients = tape.gradient(target=loss, sources=self.model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
         return {"train_loss": train_loss.result(), "train_accuracy": train_accuracy.result()}
 
@@ -95,7 +86,7 @@ class Seq2SeqModule(Modules):
             dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
             loss = 0
-            for t in range(1, self.max_sentence):
+            for t in range(1, self.max_length):
                 if sum(target[:, t]) == 0:
                     break
 
@@ -125,15 +116,15 @@ class Seq2SeqModule(Modules):
         tokenizer = load_tokenizer(self.dict_path)
 
         enc_input = preprocess_request(sentence=request, tokenizer=tokenizer,
-                                       max_length=self.max_sentence, start_sign=start_sign, end_sign=end_sign)
+                                       max_length=self.max_length, start_sign=start_sign, end_sign=end_sign)
         enc_output, states = self.encoder(inputs=enc_input)
         dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
 
-        beam_search_container = BeamSearch(beam_size=beam_size, max_length=self.max_sentence, worst_score=0)
+        beam_search_container = BeamSearch(beam_size=beam_size, max_length=self.max_length, worst_score=0)
         beam_search_container.reset(enc_output=enc_output, dec_input=dec_input, remain=states)
         enc_output, dec_input, states = beam_search_container.get_search_inputs()
 
-        for t in range(self.max_sentence):
+        for t in range(self.max_length):
             predictions, _, _ = self.decoder(inputs=[dec_input, enc_output, states])
             predictions = tf.nn.softmax(predictions, axis=-1)
 

@@ -49,7 +49,7 @@ def tf_transformer() -> None:
     parser.add_argument("--learning_rate_beta_2", default=0.98, type=int, required=False, help="二阶动量的指数加权平均权值")
     parser.add_argument("--max_train_data_size", default=0, type=int, required=False, help="用于训练的最大数据大小")
     parser.add_argument("--max_valid_data_size", default=0, type=int, required=False, help="用于验证的最大数据大小")
-    parser.add_argument("--max_length", default=40, type=int, required=False, help="单个序列的最大长度")
+    parser.add_argument("--max_sentence", default=40, type=int, required=False, help="单个序列的最大长度")
     parser.add_argument("--valid_data_file", default="", type=str, required=False, help="验证数据集路径")
     parser.add_argument("--valid_freq", default=5, type=int, required=False, help="验证频率")
     parser.add_argument("--checkpoint_save_freq", default=2, type=int, required=False, help="检查点保存频率")
@@ -98,13 +98,14 @@ def tf_transformer() -> None:
     accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy_metric")
     optimizer = tf.optimizers.Adam(learning_rate=learning_rate, beta_1=options["learning_rate_beta_1"],
                                    beta_2=options["learning_rate_beta_2"], epsilon=1e-9)
-    checkpoint_manager = load_checkpoint(checkpoint_dir=work_path + options["checkpoint_dir"],
-                                         execute_type=execute_type, encoder=encoder, decoder=decoder,
-                                         checkpoint_save_size=options["checkpoint_save_size"])
+    checkpoint_manager = load_checkpoint(
+        checkpoint_dir=work_path + options["checkpoint_dir"], execute_type=execute_type,
+        encoder=encoder, decoder=decoder, checkpoint_save_size=options["checkpoint_save_size"]
+    )
 
     modules = TransformerModule(
         loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
-        buffer_size=options["buffer_size"], max_length=options["max_length"],
+        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], data_type="read_single_data",
         dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder
     )
 

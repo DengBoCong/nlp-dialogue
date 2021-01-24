@@ -21,6 +21,7 @@ from __future__ import print_function
 import sys
 from argparse import ArgumentParser
 from dialogue.tensorflow.seq2seq.actuator import tf_seq2seq
+from dialogue.tensorflow.smn.actuator import tf_smn
 from dialogue.tensorflow.transformer.actuator import tf_transformer
 
 
@@ -33,6 +34,7 @@ def main() -> None:
         "tf": {
             "transformer": lambda: tf_transformer(),
             "seq2seq": lambda: tf_seq2seq(),
+            "smn": lambda: tf_smn(),
         },
         "torch": {
             "transformer": None
