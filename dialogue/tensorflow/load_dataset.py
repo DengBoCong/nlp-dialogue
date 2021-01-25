@@ -49,11 +49,11 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
 
     valid_flag = True  # 是否开启验证标记
     valid_steps_per_epoch = 0
-    valid_first, valid_second = None, None
+    valid_first, valid_second, valid_third = None, None, None
 
     if valid_data_path != "":
         print("读取验证对话对...")
-        valid_first, valid_second, _ = _read_data(
+        valid_first, valid_second, valid_third = _read_data(
             data_path=valid_data_path, max_data_size=max_valid_data_size,
             max_sentence=max_sentence, data_type=valid_data_type, tokenizer=tokenizer, **kwargs
         )
@@ -61,6 +61,7 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
         train_size = int(len(train_first) * (1.0 - valid_data_split))
         valid_first = train_first[train_size:]
         valid_second = train_second[train_size:]
+        valid_third = train_third[train_size:]
         train_first = train_first[:train_size]
         train_second = train_second[:train_size]
         train_third = train_third[:train_size]
@@ -68,12 +69,12 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
         valid_flag = False
 
     train_dataset = tf.data.Dataset.from_tensor_slices((train_first, train_second, train_third)).cache().shuffle(
-        buffer_size).prefetch(tf.data.experimental.AUTOTUNE)
+        buffer_size, reshuffle_each_iteration=True).prefetch(tf.data.experimental.AUTOTUNE)
     train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
 
     if valid_flag:
-        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_first, valid_second, [[0]] * len(valid_first))) \
-            .cache().shuffle(buffer_size).prefetch(tf.data.experimental.AUTOTUNE)
+        valid_dataset = tf.data.Dataset.from_tensor_slices((valid_first, valid_second, valid_third)) \
+            .prefetch(tf.data.experimental.AUTOTUNE)
         valid_dataset = valid_dataset.batch(batch_size, drop_remainder=True)
         valid_steps_per_epoch = len(valid_first) // batch_size
     else:

@@ -111,7 +111,8 @@ def tf_smn() -> None:
                      save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
         modules.evaluate(
-            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"]
+            max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"],
+            max_utterance=options["max_utterance"]
         )
     elif execute_type == "chat":
         print("Agent: 你好！结束聊天请输入ESC。")

@@ -20,9 +20,9 @@ from __future__ import print_function
 
 import time
 import tensorflow as tf
+from dialogue.metrics import recall_at_position_k_in_n
 from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
-from dialogue.tensorflow.optimizers import loss_func_mask
 from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import ProgressBar
@@ -39,32 +39,41 @@ class SMNModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, train_loss: tf.keras.metrics.Mean,
-                    train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy, *args, **kwargs) -> dict:
+    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
-        :param batch_dataset: batch的数据
+        :param dataset: 训练步的dataset
+        :param steps_per_epoch: 训练总步数
+        :param progress_bar: 进度管理器
         :param optimizer: 优化器
-        :param train_loss: 损失计算器
-        :param train_accuracy: 精度计算器
         :return: 返回所得指标字典
         """
-        with tf.GradientTape() as tape:
-            scores = self.model(inputs=[batch_dataset[0], batch_dataset[1]])
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(
-                from_logits=True, reduction=tf.keras.losses.Reduction.AUTO
-            )(batch_dataset[2], scores)
+        start_time = time.time()
+        self.loss_metric.reset_states()
+        self.accuracy_metric.reset_states()
+        progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
 
-        train_loss(loss)
-        train_accuracy(batch_dataset[2], scores)
-        gradients = tape.gradient(target=loss, sources=self.model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
+        for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
+            with tf.GradientTape() as tape:
+                scores = self.model(inputs=[utterances, response])
+                loss = tf.keras.losses.SparseCategoricalCrossentropy(
+                    from_logits=True, reduction=tf.keras.losses.Reduction.AUTO)(label, scores)
 
-        return {"train_loss": train_loss.result(), "train_accuracy": train_accuracy.result()}
+            self.loss_metric(loss)
+            self.accuracy_metric(label, scores)
+            gradients = tape.gradient(target=loss, sources=self.model.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
-    def _valid_step(self, dataset: tf.data.Dataset, valid_loss: tf.keras.metrics.Mean, steps_per_epoch: int,
-                    batch_size: int, valid_accuracy: tf.keras.metrics.SparseCategoricalAccuracy,
-                    *args, **kwargs) -> dict:
+            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
+                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
+
+        progress_bar.done(step_time=time.time() - start_time)
+
+        return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
+
+    def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
         """ 验证步
 
         :param dataset: 验证步的dataset
@@ -76,30 +85,34 @@ class SMNModule(Modules):
         """
         print("验证轮次")
         start_time = time.time()
-        valid_loss.reset_states()
-        valid_accuracy.reset_states()
+        self.loss_metric.reset_states()
+        self.accuracy_metric.reset_states()
+        progress_bar = ProgressBar(total=steps_per_epoch, num=self.batch_size)
 
-        progress_bar = ProgressBar(total=steps_per_epoch, num=batch_size)
+        scores = tf.constant([], dtype=self.model.dtype)
+        labels = tf.constant([], dtype=self.model.dtype)
+        for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
+            print(label)
+            exit(0)
+            score = self.model(inputs=[utterances, response])
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(
+                from_logits=True, reduction=tf.keras.losses.Reduction.AUTO)(label, score)
 
-        for (batch, (inp, target, _)) in enumerate(dataset.take(steps_per_epoch)):
-            enc_output, enc_hidden = self.encoder(inputs=inp)
-            dec_hidden = enc_hidden
-            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
+            self.loss_metric(loss)
+            self.accuracy_metric(label, score)
+            scores = tf.concat(values=[scores, score[:, 1]], axis=0)
+            labels = tf.concat(values=[labels, tf.cast(x=label, dtype=self.model.dtype)], axis=0)
 
-            loss = 0
-            for t in range(1, self.max_length):
-                if sum(target[:, t]) == 0:
-                    break
-
-                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
-                loss += loss_func_mask(real=target[:, t], pred=predictions)
-                valid_accuracy(target[:, t], predictions)
-
-                dec_input = tf.expand_dims(target[:, t], 1)
-
-            valid_loss(loss)
             progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
-                         .format(valid_loss.result(), valid_accuracy.result()))
+                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
+
+        # scores_label = tf.concat(
+        #     values=[tf.expand_dims(input=scores, axis=1), tf.expand_dims(input=labels, axis=1)], axis=1
+        # ).numpy()
+
+        rn_k = recall_at_position_k_in_n(labels=[scores, labels], k=[1, 2, 5], n=10, tar=1.0)
+        print(rn_k)
+        exit(0)
 
         progress_bar.done(step_time=time.time() - start_time)
 

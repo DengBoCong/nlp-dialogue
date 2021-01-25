@@ -19,10 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
-import time
 import tensorflow as tf
 from dialogue.tensorflow.load_dataset import load_data
-from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
 
 

@@ -1,0 +1,49 @@
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""模型评估指标
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+import numpy as np
+
+
+def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: int = 1.0) -> list:
+    """ Rn@k 召回率指标计算
+
+    :param labels: 数据列表
+    :param k: top k
+    :param n: 样本范围
+    :param tar: 目标值
+    :return: 所得指标值
+    """
+    print(labels)
+    exit(0)
+    length = len(k)
+    sum_k = [0.0] * length
+    total = 0
+    for i in range(0, len(labels), n):
+        total += 1
+        sort_data = sorted(labels[i:i+10])
+        sort_data = np.array(sort_data)[:, 1]
+        print(sort_data)
+        for j in range(length):
+            sum_k[k[j]] += 1.0 * sort_data[:k[j]].count(tar) / sort_data.count(tar)
+
+    for i in range(length):
+        sum_k[i] /= total
+
+    return sum_k
