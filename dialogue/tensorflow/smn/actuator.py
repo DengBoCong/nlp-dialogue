@@ -22,8 +22,7 @@ import os
 import json
 import tensorflow as tf
 from argparse import ArgumentParser
-from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
-from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
+from dialogue.tensorflow.preprocess import create_search_data
 from dialogue.tensorflow.smn.model import smn
 from dialogue.tensorflow.smn.modules import SMNModule
 from dialogue.tensorflow.utils import load_checkpoint
@@ -44,7 +43,9 @@ def tf_smn() -> None:
     parser.add_argument('--max_utterance', default=10, type=int, required=False, help='当回合最大句子数')
     parser.add_argument('--max_train_data_size', default=36, type=int, required=False, help='用于训练的最大数据大小')
     parser.add_argument('--max_valid_data_size', default=100, type=int, required=False, help='用于验证的最大数据大小')
+    parser.add_argument("--checkpoint_save_freq", default=2, type=int, required=False, help="检查点保存频率")
     parser.add_argument('--checkpoint_save_size', default=1, type=int, required=False, help='单轮训练中检查点保存数量')
+    parser.add_argument("--valid_data_split", default=0.0, type=float, required=False, help="从训练数据集中划分验证数据的比例")
     parser.add_argument('--learning_rate', default=0.001, type=float, required=False, help='学习率')
     parser.add_argument('--max_database_size', default=0, type=int, required=False, help='最大数据候选数量')
     parser.add_argument('--dict_path', default='data\\preprocess\\smn_dict.json', type=str, required=False, help='字典路径')
@@ -88,18 +89,23 @@ def tf_smn() -> None:
 
     modules = SMNModule(
         loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
-        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], data_type="read_smn_train_data",
+        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"],
+        train_data_type="read_multi_turn_data", valid_data_type="read_multi_turn_data",
         dict_path=work_path + options["dict_path"], model=model
     )
 
-    if execute_type == "train":
-        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': []}
+    if execute_type == "pre_treat":
+        create_search_data(data_path=work_path + options["train_data_path"], solr_server=options["solr_server"],
+                           max_database_size=options["max_database_size"], vocab_size=options["vocab_size"],
+                           dict_path=work_path + options["dict_path"], unk_sign=options["unk_sign"])
+    elif execute_type == "train":
+        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': [], "R2@1": []}
         history = modules.train(
             optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
-            train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
+            train_data_path=work_path + options["train_data_path"], max_utterance=options["max_utterance"],
             checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
-            max_utterance=options["max_utterance"]
+            valid_data_path=work_path + options["valid_data_path"]
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])

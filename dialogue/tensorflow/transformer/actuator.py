@@ -105,8 +105,8 @@ def tf_transformer() -> None:
 
     modules = TransformerModule(
         loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
-        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], data_type="read_single_data",
-        dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder
+        buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], train_data_type="read_single_data",
+        valid_data_type="read_single_data", dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder
     )
 
     if execute_type == "pre_treat":

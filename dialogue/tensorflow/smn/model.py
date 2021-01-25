@@ -70,7 +70,7 @@ def accumulate(units: int, embedding_dim: int, max_utterance: int, max_sentence:
 
         conv_outputs = conv2d_layer(matrix)
         pooling_outputs = max_pooling2d_layer(conv_outputs)
-        flatten_outputs = tf.keras.layers.Flatten(dtype=d_type, name="{}_flatten_{}".format(name))(pooling_outputs)
+        flatten_outputs = tf.keras.layers.Flatten(dtype=d_type, name="{}_flatten_{}".format(name, index))(pooling_outputs)
 
         matching_vector = dense_layer(flatten_outputs)
         matching_vectors.append(matching_vector)

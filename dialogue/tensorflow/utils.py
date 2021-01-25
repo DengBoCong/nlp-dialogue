@@ -21,6 +21,7 @@ from __future__ import print_function
 import os
 import jieba
 import tensorflow as tf
+from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 def combine_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32):
@@ -123,3 +124,27 @@ def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.prepr
     inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding='post')
 
     return inputs
+
+
+def get_tf_idf_top_k(history: list, k: int = 5):
+    """ 使用tf_idf算法计算权重最高的k个词，并返回
+
+    :param history: 上下文语句
+    :param k: 返回词数量
+    :return: top_5_key
+    """
+    tf_idf = {}
+
+    vectorizer = TfidfVectorizer(analyzer="word")
+    weights = vectorizer.fit_transform(history).toarray()[-1]
+    key_words = vectorizer.get_feature_names()
+
+    for i in range(len(weights)):
+        tf_idf[key_words[i]] = weights[i]
+
+    top_k_key = []
+    tf_idf_sorted = sorted(tf_idf.items(), key=lambda x: x[1], reverse=True)[:k]
+    for element in tf_idf_sorted:
+        top_k_key.append(element[0])
+
+    return top_k_key

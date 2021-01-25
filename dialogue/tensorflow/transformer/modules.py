@@ -30,12 +30,13 @@ from dialogue.tools import ProgressBar
 
 class TransformerModule(Modules):
     def __init__(self, loss_metric: tf.keras.metrics.Mean, accuracy_metric: tf.keras.metrics.SparseCategoricalAccuracy,
-                 batch_size: int, buffer_size: int, max_sentence: int, data_type: str, dict_path: str = "",
-                 model: tf.keras.Model = None, encoder: tf.keras.Model = None, decoder: tf.keras.Model = None):
+                 batch_size: int, buffer_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
+                 dict_path: str = "", model: tf.keras.Model = None, encoder: tf.keras.Model = None,
+                 decoder: tf.keras.Model = None):
         super(TransformerModule, self).__init__(
-            loss_metric=loss_metric, accuracy_metric=accuracy_metric, data_type=data_type, batch_size=batch_size,
-            buffer_size=buffer_size, max_sentence=max_sentence, dict_path=dict_path, model=model, encoder=encoder,
-            decoder=decoder
+            loss_metric=loss_metric, accuracy_metric=accuracy_metric, train_data_type=train_data_type,
+            valid_data_type=valid_data_type, batch_size=batch_size, buffer_size=buffer_size, max_sentence=max_sentence,
+            dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
     def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, train_loss: tf.keras.metrics.Mean,

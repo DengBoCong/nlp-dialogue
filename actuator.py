@@ -42,10 +42,10 @@ def main() -> None:
     }
 
     options = parser.parse_args(sys.argv[1:5])
-    try:
-        models[options.version][options.model]()
-    except KeyError:
+    if options.version not in ["tf", "torch"] or options.model not in ["transformer", "seq2seq", "smn"]:
         print("actuator.py: error: VERSION: [tf/torch] MODEL: [transformer/seq2seq/smn]")
+        exit(0)
+    models[options.version][options.model]()
 
 
 if __name__ == '__main__':

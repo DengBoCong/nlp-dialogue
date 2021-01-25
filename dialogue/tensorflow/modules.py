@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""TensorFlow实现下，模型功能顶层封装类，包含train、evaluate等等模式
+"""模型功能顶层封装类，包含train、evaluate等等模式
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -28,8 +28,9 @@ from dialogue.tools import ProgressBar
 
 class Modules(abc.ABC):
     def __init__(self, loss_metric: tf.keras.metrics.Mean, accuracy_metric: tf.keras.metrics.SparseCategoricalAccuracy,
-                 batch_size: int, buffer_size: int, max_sentence: int, data_type: str, dict_path: str = "",
-                 model: tf.keras.Model = None, encoder: tf.keras.Model = None, decoder: tf.keras.Model = None) -> None:
+                 batch_size: int, buffer_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
+                 dict_path: str = "", model: tf.keras.Model = None, encoder: tf.keras.Model = None,
+                 decoder: tf.keras.Model = None) -> None:
         """model以及(encoder，decoder)两类模型传其中一种即可，具体在各自继承之后的训练步中使用
 
         :param loss_metric: 损失计算器
@@ -37,7 +38,8 @@ class Modules(abc.ABC):
         :param batch_size: Dataset加载批大小
         :param buffer_size: Dataset加载缓存大小
         :param max_sentence: 最大句子长度
-        :param data_type: 读取数据类型，单轮/多轮
+        :param train_data_type: 读取训练数据类型，单轮/多轮...
+        :param valid_data_type: 读取验证数据类型，单轮/多轮...
         :param dict_path: 字典路径，若使用phoneme则不用传
         :param model: 模型
         :param encoder: encoder模型
@@ -49,7 +51,8 @@ class Modules(abc.ABC):
         self.batch_size = batch_size
         self.buffer_size = buffer_size
         self.max_sentence = max_sentence
-        self.data_type = data_type
+        self.train_data_type = train_data_type
+        self.valid_data_type = valid_data_type
         self.dict_path = dict_path
         self.model = model
         self.encoder = encoder
@@ -104,7 +107,8 @@ class Modules(abc.ABC):
             dict_path=self.dict_path, train_data_path=train_data_path, buffer_size=self.buffer_size,
             batch_size=self.batch_size, max_sentence=self.max_sentence, valid_data_split=valid_data_split,
             valid_data_path=valid_data_path, max_train_data_size=max_train_data_size,
-            max_valid_data_size=max_valid_data_size, data_type=self.data_type, **kwargs
+            valid_data_type=self.valid_data_type, max_valid_data_size=max_valid_data_size,
+            train_data_type=self.train_data_type, **kwargs
         )
 
         for epoch in range(epochs):
@@ -155,10 +159,9 @@ class Modules(abc.ABC):
         """
         print('训练开始，正在准备数据中')
         valid_dataset, _, valid_steps_per_epoch, _ = load_data(
-            dict_path=self.dict_path, train_data_path=valid_data_path,
-            buffer_size=self.buffer_size, data_type=self.data_type,
-            batch_size=self.batch_size, max_sentence=self.max_sentence,
-            max_train_data_size=max_valid_data_size, **kwargs
+            dict_path=self.dict_path, train_data_path=valid_data_path, valid_data_type=self.valid_data_type,
+            buffer_size=self.buffer_size, train_data_type=self.train_data_type, batch_size=self.batch_size,
+            max_sentence=self.max_sentence, max_train_data_size=max_valid_data_size, **kwargs
         )
 
         _ = self._valid_step(dataset=valid_dataset, batch_size=self.batch_size, valid_accuracy=self.accuracy_metric,
