@@ -32,6 +32,8 @@ class Modules(abc.ABC):
                  dict_path: str = "", model: tf.keras.Model = None, encoder: tf.keras.Model = None,
                  decoder: tf.keras.Model = None) -> None:
         """model以及(encoder，decoder)两类模型传其中一种即可，具体在各自继承之后的训练步中使用
+        Note:
+            a): 模型训练指标中，损失器和精度器必传，保证至少返回到当前batch为止的平均训练损失和训练精度
 
         :param loss_metric: 损失计算器
         :param accuracy_metric: 精度计算器
@@ -59,28 +61,25 @@ class Modules(abc.ABC):
         self.decoder = decoder
 
     @abc.abstractmethod
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, train_loss: tf.keras.metrics.Mean,
-                    train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy, *args, **kwargs) -> dict:
+    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """该方法用于定于训练步中，模型实际训练的核心代码（在train方法中使用）
 
         Note:
             a): 返回所得指标字典
-            b): 模型训练指标中，损失器和精度器必传，保证至少返回到当前batch为止的平均训练损失和训练精度
-            c): 参数如batch_dataset、optimizer、model、encoder、decoder 为模型训练必需
+            b): 参数如dataset、optimizer为模型训练必需
         """
 
         raise NotImplementedError("Must be implemented in subclasses.")
 
     @abc.abstractmethod
-    def _valid_step(self, dataset: tf.data.Dataset, valid_loss: tf.keras.metrics.Mean, steps_per_epoch: int,
-                    batch_size: int, valid_accuracy: tf.keras.metrics.SparseCategoricalAccuracy,
-                    *args, **kwargs) -> dict:
+    def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
         """ 该方法用于定义验证模型逻辑
 
         Note:
             a): 返回所得指标字典
-            b): 模型验证指标中，损失器和精度器必传，保证至少返回验证的平均验证损失和验证精度
-            c): dataset、model、encoder、decoder 为模型训练必需
+            b): dataset为模型验证必需
         """
 
         raise NotImplementedError("Must be implemented in subclasses.")
@@ -103,7 +102,7 @@ class Modules(abc.ABC):
         :return: 返回历史指标数据
         """
         print('训练开始，正在准备数据中')
-        train_dataset, valid_dataset, steps_per_epoch, valid_steps_per_epoch = load_data(
+        train_dataset, valid_dataset, train_steps_per_epoch, valid_steps_per_epoch = load_data(
             dict_path=self.dict_path, train_data_path=train_data_path, buffer_size=self.buffer_size,
             batch_size=self.batch_size, max_sentence=self.max_sentence, valid_data_split=valid_data_split,
             valid_data_path=valid_data_path, max_train_data_size=max_train_data_size,
@@ -111,24 +110,15 @@ class Modules(abc.ABC):
             train_data_type=self.train_data_type, **kwargs
         )
 
+        progress_bar = ProgressBar()
+
         for epoch in range(epochs):
             print('Epoch {}/{}'.format(epoch + 1, epochs))
-            start_time = time.time()
-            train_metrics = {}
-            self.loss_metric.reset_states()
-            self.accuracy_metric.reset_states()
 
-            progress_bar = ProgressBar(total=steps_per_epoch, num=self.batch_size)
-
-            for (batch, batch_dataset) in enumerate(train_dataset.take(steps_per_epoch)):
-                train_metrics = self._train_step(
-                    batch_dataset=batch_dataset, optimizer=optimizer,
-                    train_loss=self.loss_metric, train_accuracy=self.accuracy_metric, **kwargs
-                )
-
-                progress_bar(current=batch + 1, metrics=get_dict_string(train_metrics))
-
-            progress_bar.done(step_time=time.time() - start_time)
+            train_metrics = self._train_step(
+                dataset=train_dataset, steps_per_epoch=train_steps_per_epoch,
+                progress_bar=progress_bar, optimizer=optimizer, **kwargs
+            )
 
             for key, value in train_metrics.items():
                 history[key].append(value.numpy())
@@ -139,10 +129,8 @@ class Modules(abc.ABC):
                 if valid_steps_per_epoch == 0 or valid_dataset is None:
                     print("验证数据量过小，小于batch_size，已跳过验证轮次")
                 else:
-                    valid_metrics = self._valid_step(
-                        dataset=valid_dataset, batch_size=self.batch_size, valid_accuracy=self.accuracy_metric,
-                        valid_loss=self.loss_metric, steps_per_epoch=valid_steps_per_epoch, **kwargs
-                    )
+                    valid_metrics = self._valid_step(dataset=valid_dataset, progress_bar=progress_bar,
+                                                     steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
                     for key, value in valid_metrics.items():
                         history[key].append(value.numpy())
@@ -157,15 +145,16 @@ class Modules(abc.ABC):
         :param max_valid_data_size: 最大验证数据量
         :return: 返回历史指标数据
         """
-        print('训练开始，正在准备数据中')
+        print('验证开始，正在准备数据中')
         valid_dataset, _, valid_steps_per_epoch, _ = load_data(
             dict_path=self.dict_path, train_data_path=valid_data_path, valid_data_type=self.valid_data_type,
             buffer_size=self.buffer_size, train_data_type=self.train_data_type, batch_size=self.batch_size,
             max_sentence=self.max_sentence, max_train_data_size=max_valid_data_size, **kwargs
         )
 
-        _ = self._valid_step(dataset=valid_dataset, batch_size=self.batch_size, valid_accuracy=self.accuracy_metric,
-                             valid_loss=self.loss_metric, steps_per_epoch=valid_steps_per_epoch, **kwargs)
+        progress_bar = ProgressBar()
+        _ = self._valid_step(dataset=valid_dataset, progress_bar=progress_bar,
+                             steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
         print('验证结束')
 

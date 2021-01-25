@@ -71,7 +71,7 @@ class ProgressBar(object):
     EXECUTE = "%(current)d/%(total)d %(bar)s (%(percent)3d%%) %(metrics)s"
     DONE = "%(current)d/%(total)d %(bar)s - %(time).4fs/step %(metrics)s"
 
-    def __init__(self, total: int, num: int, width: int = 30, fmt: str = EXECUTE,
+    def __init__(self, total: int = 100, num: int = 1, width: int = 30, fmt: str = EXECUTE,
                  symbol: str = "=", remain: str = ".", output=sys.stderr):
         """
         :param total: 执行总的次数
@@ -111,6 +111,21 @@ class ProgressBar(object):
             "metrics": metrics
         }
         print("\r" + self.fmt % self.args, file=self.output, end="")
+
+    def reset(self, total: int, num: int, width: int = 30, fmt: str = EXECUTE,
+              symbol: str = "=", remain: str = ".", output=sys.stderr):
+        """重置内部属性
+
+        :param total: 执行总的次数
+        :param num: 每执行一次任务数量级
+        :param width: 进度条符号数量
+        :param fmt: 进度条格式
+        :param symbol: 进度条完成符号
+        :param remain: 进度条未完成符号
+        :param output: 错误输出
+        """
+        self.__init__(total=total, num=num, width=width, fmt=fmt,
+                      symbol=symbol, remain=remain, output=output)
 
     def done(self, step_time: float, fmt=DONE):
         """

@@ -39,60 +39,64 @@ class Seq2SeqModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, train_loss: tf.keras.metrics.Mean,
-                    train_accuracy: tf.keras.metrics.SparseCategoricalAccuracy, *args, **kwargs) -> dict:
+    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
-        :param batch_dataset: batch的数据
+        :param dataset: 训练步的dataset
+        :param steps_per_epoch: 训练总步数
+        :param progress_bar: 进度管理器
         :param optimizer: 优化器
-        :param train_loss: 损失计算器
-        :param train_accuracy: 精度计算器
         :return: 返回所得指标字典
         """
-        with tf.GradientTape() as tape:
-            enc_output, states = self.encoder(inputs=batch_dataset[0])
+        start_time = time.time()
+        self.loss_metric.reset_states()
+        self.accuracy_metric.reset_states()
+        progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
+
+        for (batch, (inputs, targets, weights)) in enumerate(dataset.take(steps_per_epoch)):
             dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
+            with tf.GradientTape() as tape:
+                loss = 0
+                enc_output, states = self.encoder(inputs=inputs)
+                for t in range(1, self.max_sentence):
+                    if sum(targets[:, t]) == 0:
+                        break
 
-            loss = 0
-            for t in range(1, self.max_sentence):
-                if sum(batch_dataset[1][:, t]) == 0:
-                    break
+                    predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
+                    loss += loss_func_mask(real=targets[:, t], pred=predictions, weights=weights)
+                    self.accuracy_metric(targets[:, t], predictions)
+                    dec_input = tf.expand_dims(targets[:, t], 1)
 
-                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
-                loss += loss_func_mask(real=batch_dataset[1][:, t], pred=predictions, weights=batch_dataset[2])
-                train_accuracy(batch_dataset[1][:, t], predictions)
+            self.loss_metric(loss)
+            variables = self.encoder.trainable_variables + self.decoder.trainable_variables
+            gradients = tape.gradient(target=loss, sources=variables)
+            optimizer.apply_gradients(zip(gradients, variables))
 
-                dec_input = tf.expand_dims(batch_dataset[1][:, t], 1)
+            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
+                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
 
-        train_loss(loss)
-        variables = self.encoder.trainable_variables + self.decoder.trainable_variables
-        gradients = tape.gradient(target=loss, sources=variables)
-        optimizer.apply_gradients(zip(gradients, variables))
+        progress_bar.done(step_time=time.time() - start_time)
 
-        return {"train_loss": train_loss.result(), "train_accuracy": train_accuracy.result()}
+        return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 
-    def _valid_step(self, dataset: tf.data.Dataset, valid_loss: tf.keras.metrics.Mean, steps_per_epoch: int,
-                    batch_size: int, valid_accuracy: tf.keras.metrics.SparseCategoricalAccuracy,
-                    *args, **kwargs) -> dict:
+    def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
+                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
         """ 验证步
 
         :param dataset: 验证步的dataset
-        :param valid_loss: 损失计算器
         :param steps_per_epoch: 验证总步数
-        :param batch_size: batch大小
-        :param valid_accuracy: 精度计算器
+        :param progress_bar: 进度管理器
         :return: 返回所得指标字典
         """
         print("验证轮次")
         start_time = time.time()
-        valid_loss.reset_states()
-        valid_accuracy.reset_states()
+        self.loss_metric.reset_states()
+        self.accuracy_metric.reset_states()
+        progress_bar = ProgressBar(total=steps_per_epoch, num=self.batch_size)
 
-        progress_bar = ProgressBar(total=steps_per_epoch, num=batch_size)
-
-        for (batch, (inp, target, _)) in enumerate(dataset.take(steps_per_epoch)):
-            enc_output, enc_hidden = self.encoder(inputs=inp)
-            dec_hidden = enc_hidden
+        for (batch, (inputs, target, _)) in enumerate(dataset.take(steps_per_epoch)):
+            enc_output, states = self.encoder(inputs=inputs)
             dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
             loss = 0
@@ -100,19 +104,19 @@ class Seq2SeqModule(Modules):
                 if sum(target[:, t]) == 0:
                     break
 
-                predictions, dec_hidden, _ = self.decoder(inputs=[dec_input, enc_output, dec_hidden])
+                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
                 loss += loss_func_mask(real=target[:, t], pred=predictions)
-                valid_accuracy(target[:, t], predictions)
-
                 dec_input = tf.expand_dims(target[:, t], 1)
 
-            valid_loss(loss)
+                self.accuracy_metric(target[:, t], predictions)
+
+            self.loss_metric(loss)
             progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
-                         .format(valid_loss.result(), valid_accuracy.result()))
+                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
 
         progress_bar.done(step_time=time.time() - start_time)
 
-        return {"valid_loss": valid_loss.result(), "valid_accuracy": valid_accuracy.result()}
+        return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
 
     def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> str:
         """ 对话推断模块
