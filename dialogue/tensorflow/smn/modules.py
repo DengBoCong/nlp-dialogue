@@ -25,6 +25,7 @@ from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
 from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tensorflow.utils import preprocess_request
+from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
 
 
@@ -92,8 +93,6 @@ class SMNModule(Modules):
         scores = tf.constant([], dtype=self.model.dtype)
         labels = tf.constant([], dtype=self.model.dtype)
         for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
-            print(label)
-            exit(0)
             score = self.model(inputs=[utterances, response])
             loss = tf.keras.losses.SparseCategoricalCrossentropy(
                 from_logits=True, reduction=tf.keras.losses.Reduction.AUTO)(label, score)
@@ -106,17 +105,16 @@ class SMNModule(Modules):
             progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
                          .format(self.loss_metric.result(), self.accuracy_metric.result()))
 
-        # scores_label = tf.concat(
-        #     values=[tf.expand_dims(input=scores, axis=1), tf.expand_dims(input=labels, axis=1)], axis=1
-        # ).numpy()
+        rn_k = recall_at_position_k_in_n(labels=[scores.numpy(), labels.numpy()], k=[1, 2, 5], n=10, tar=1.0)
+        message = {
+            "train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result(),
+            "valid_R10@1": rn_k[0], "valid_R10@2": rn_k[1], "valid_R10@5": rn_k[2]
+        }
 
-        rn_k = recall_at_position_k_in_n(labels=[scores, labels], k=[1, 2, 5], n=10, tar=1.0)
-        print(rn_k)
-        exit(0)
-
+        progress_bar(current=steps_per_epoch, metrics=get_dict_string(data=message))
         progress_bar.done(step_time=time.time() - start_time)
 
-        return {"valid_loss": valid_loss.result(), "valid_accuracy": valid_accuracy.result()}
+        return message
 
     def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> str:
         """ 对话推断模块

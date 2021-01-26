@@ -119,7 +119,7 @@ class Modules(abc.ABC):
             )
 
             for key, value in train_metrics.items():
-                history[key].append(value.numpy())
+                history[key].append(value)
 
             if (epoch + 1) % checkpoint_save_freq == 0:
                 checkpoint.save()
@@ -131,7 +131,7 @@ class Modules(abc.ABC):
                                                      steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
                     for key, value in valid_metrics.items():
-                        history[key].append(value.numpy())
+                        history[key].append(value)
 
         print('训练结束')
         return history
@@ -144,10 +144,10 @@ class Modules(abc.ABC):
         :return: 返回历史指标数据
         """
         print('验证开始，正在准备数据中')
-        valid_dataset, _, valid_steps_per_epoch, _ = load_data(
-            dict_path=self.dict_path, train_data_path=valid_data_path, valid_data_type=self.valid_data_type,
+        _, valid_dataset, _, valid_steps_per_epoch = load_data(
+            dict_path=self.dict_path, valid_data_path=valid_data_path, valid_data_type=self.valid_data_type,
             buffer_size=self.buffer_size, train_data_type=self.train_data_type, batch_size=self.batch_size,
-            max_sentence=self.max_sentence, max_train_data_size=max_valid_data_size, **kwargs
+            max_sentence=self.max_sentence, max_valid_data_size=max_valid_data_size, **kwargs
         )
 
         progress_bar = ProgressBar()

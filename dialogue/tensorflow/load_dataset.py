@@ -23,33 +23,41 @@ import tensorflow as tf
 from dialogue.tensorflow.utils import load_tokenizer
 
 
-def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size: int, train_data_type: str,
-              valid_data_type: str, max_sentence: int, valid_data_split: float = 0.0, valid_data_path: str = "",
+def load_data(dict_path: str, buffer_size: int, batch_size: int, train_data_type: str, valid_data_type: str,
+              max_sentence: int, valid_data_split: float = 0.0, train_data_path: str = "", valid_data_path: str = "",
               max_train_data_size: int = 0, max_valid_data_size: int = 0, **kwargs) -> tuple:
     """ 数据加载方法
 
     :param dict_path: 字典路径
-    :param train_data_path: 文本数据路径
     :param buffer_size: Dataset加载缓存大小
     :param batch_size: Dataset加载批大小
     :param train_data_type: 读取训练数据类型，单轮/多轮...
     :param valid_data_type: 读取验证数据类型，单轮/多轮...
     :param max_sentence: 单个句子最大长度
     :param valid_data_split: 用于从训练数据中划分验证数据
+    :param train_data_path: 文本数据路径
     :param valid_data_path: 验证数据文本路径
     :param max_train_data_size: 最大训练数据量
     :param max_valid_data_size: 最大验证数据量
     :return: 训练Dataset、验证Dataset、训练数据总共的步数、验证数据总共的步数和检查点前缀
     """
     tokenizer = load_tokenizer(dict_path=dict_path)
-    train_first, train_second, train_third = _read_data(
-        data_path=train_data_path, max_data_size=max_train_data_size,
-        max_sentence=max_sentence, data_type=train_data_type, tokenizer=tokenizer, **kwargs
-    )
+
+    train_flag = True  # 是否开启训练标记
+    train_steps_per_epoch = 0
+    train_first, train_second, train_third = None, None, None
 
     valid_flag = True  # 是否开启验证标记
     valid_steps_per_epoch = 0
     valid_first, valid_second, valid_third = None, None, None
+
+    if train_data_path != "":
+        train_first, train_second, train_third = _read_data(
+            data_path=train_data_path, max_data_size=max_train_data_size,
+            max_sentence=max_sentence, data_type=train_data_type, tokenizer=tokenizer, **kwargs
+        )
+    else:
+        train_flag = False
 
     if valid_data_path != "":
         print("读取验证对话对...")
@@ -68,9 +76,13 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
     else:
         valid_flag = False
 
-    train_dataset = tf.data.Dataset.from_tensor_slices((train_first, train_second, train_third)).cache().shuffle(
-        buffer_size, reshuffle_each_iteration=True).prefetch(tf.data.experimental.AUTOTUNE)
-    train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
+    if train_flag:
+        train_dataset = tf.data.Dataset.from_tensor_slices((train_first, train_second, train_third)).cache().shuffle(
+            buffer_size, reshuffle_each_iteration=True).prefetch(tf.data.experimental.AUTOTUNE)
+        train_dataset = train_dataset.batch(batch_size, drop_remainder=True)
+        train_steps_per_epoch = len(train_first) // batch_size
+    else:
+        train_dataset = None
 
     if valid_flag:
         valid_dataset = tf.data.Dataset.from_tensor_slices((valid_first, valid_second, valid_third)) \
@@ -80,9 +92,7 @@ def load_data(dict_path: str, train_data_path: str, buffer_size: int, batch_size
     else:
         valid_dataset = None
 
-    steps_per_epoch = len(train_first) // batch_size
-
-    return train_dataset, valid_dataset, steps_per_epoch, valid_steps_per_epoch
+    return train_dataset, valid_dataset, train_steps_per_epoch, valid_steps_per_epoch
 
 
 def _read_data(data_path: str, max_data_size: int, max_sentence: int, data_type: str,

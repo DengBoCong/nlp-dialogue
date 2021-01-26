@@ -99,7 +99,10 @@ def tf_smn() -> None:
                            max_database_size=options["max_database_size"], vocab_size=options["vocab_size"],
                            dict_path=work_path + options["dict_path"], unk_sign=options["unk_sign"])
     elif execute_type == "train":
-        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': [], "R2@1": []}
+        history = {
+            'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [],
+            'valid_loss': [], "valid_R10@1": [], "valid_R10@2": [], "valid_R10@5": []
+        }
         history = modules.train(
             optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
             train_data_path=work_path + options["train_data_path"], max_utterance=options["max_utterance"],
@@ -107,8 +110,9 @@ def tf_smn() -> None:
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
             valid_data_path=work_path + options["valid_data_path"]
         )
-        show_history(history=history, valid_freq=options["checkpoint_save_freq"],
-                     save_dir=work_path + options["history_image_dir"])
+        print(history)
+        # show_history(history=history, valid_freq=options["checkpoint_save_freq"],
+        #              save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
         modules.evaluate(
             max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"],

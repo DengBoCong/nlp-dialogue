@@ -21,7 +21,7 @@ from __future__ import print_function
 import numpy as np
 
 
-def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: int = 1.0) -> list:
+def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: float = 1.0) -> list:
     """ Rn@k 召回率指标计算
 
     :param labels: 数据列表
@@ -30,18 +30,17 @@ def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: int
     :param tar: 目标值
     :return: 所得指标值
     """
-    print(labels)
-    exit(0)
+    score = labels[0]
+    label = labels[1]
+
     length = len(k)
     sum_k = [0.0] * length
     total = 0
-    for i in range(0, len(labels), n):
+    for i in range(0, len(label), n):
         total += 1
-        sort_data = sorted(labels[i:i+10])
-        sort_data = np.array(sort_data)[:, 1]
-        print(sort_data)
+        remain = [label[index] for index in np.argsort(score[i:i + n])]
         for j in range(length):
-            sum_k[k[j]] += 1.0 * sort_data[:k[j]].count(tar) / sort_data.count(tar)
+            sum_k[j] += 1.0 * remain[-k[j]:].count(tar) / remain.count(tar)
 
     for i in range(length):
         sum_k[i] /= total
