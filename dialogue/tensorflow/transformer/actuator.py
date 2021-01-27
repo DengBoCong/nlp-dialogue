@@ -118,7 +118,7 @@ def tf_transformer() -> None:
                                max_data_size=options["max_train_data_size"], vocab_size=options["vocab_size"],
                                qa_data_path=work_path + options["preprocess_data_path"])
     elif execute_type == "train":
-        history = {'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [], 'valid_loss': []}
+        history = {"train_accuracy": [], "train_loss": [], "valid_accuracy": [], "valid_loss": []}
         history = modules.train(
             optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
             train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",

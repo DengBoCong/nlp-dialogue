@@ -116,7 +116,7 @@ def encoder_layer(units: int, d_model: int, num_heads: int, dropout: float,
     attention = tf.keras.layers.LayerNormalization(epsilon=1e-6, dtype=d_type,
                                                    name="{}_attention_layer_norm".format(name))(inputs + attention)
 
-    outputs = tf.keras.layers.Dense(units=units, activation='relu',
+    outputs = tf.keras.layers.Dense(units=units, activation="relu",
                                     dtype=d_type, name="{}_dense_act".format(name))(attention)
     outputs = tf.keras.layers.Dense(units=d_model, dtype=d_type, name="{}_dense".format(name))(outputs)
     outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_outputs_dropout".format(name))(outputs)
@@ -154,7 +154,7 @@ def decoder_layer(units: int, d_model: int, num_heads: int, dropout: float,
     attention2 = tf.keras.layers.LayerNormalization(
         epsilon=1e-6, dtype=d_type, name="{}_attention_layer_norm2".format(name))(attention2 + attention1)
 
-    outputs = tf.keras.layers.Dense(units=units, activation='relu',
+    outputs = tf.keras.layers.Dense(units=units, activation="relu",
                                     dtype=d_type, name="{}_dense_act".format(name))(attention2)
     outputs = tf.keras.layers.Dense(units=d_model, dtype=d_type, name="{}_dense".format(name))(outputs)
     outputs = tf.keras.layers.Dropout(rate=dropout, dtype=d_type, name="{}_outputs_dropout".format(name))(outputs)

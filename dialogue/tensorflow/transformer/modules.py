@@ -142,11 +142,11 @@ class TransformerModule(Modules):
             enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
 
         beam_search_result = beam_search_container.get_result(top_k=3)
-        result = ''
+        result = ""
         # 从容器中抽取序列，生成最终结果
         for i in range(len(beam_search_result)):
             temp = beam_search_result[i].numpy()
             text = tokenizer.sequences_to_texts(temp)
-            text[0] = text[0].replace(start_sign, '').replace(end_sign, '').replace(' ', '')
-            result = '<' + text[0] + '>' + result
+            text[0] = text[0].replace(start_sign, "").replace(end_sign, "").replace(" ", "")
+            result = "<" + text[0] + ">" + result
         return result

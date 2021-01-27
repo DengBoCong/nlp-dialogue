@@ -48,5 +48,5 @@ def main() -> None:
     models[options.version][options.model]()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

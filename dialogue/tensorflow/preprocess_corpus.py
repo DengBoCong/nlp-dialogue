@@ -62,13 +62,13 @@ def to_single_turn_dataset(tokenized_data_path: str, qa_data_path: str, dict_pat
 
     # 对每一轮对话上下文进行配对，形成一问一答两个部分，如果遇到下一轮对话，直接跳过
     with open(tokenized_data_path, encoding="utf-8") as raw_file, \
-            open(qa_data_path, 'w', encoding="utf-8") as single_turn_data_file:
+            open(qa_data_path, "w", encoding="utf-8") as single_turn_data_file:
         for line in raw_file:
-            line = line.strip('\n').replace('/', '')
+            line = line.strip("\n").replace("/", "")
             # line = re.sub(r"[%s]+" % punctuation, "", line)
             # 因为原始数据集中，是一轮一轮的对话排列的，所以需要注意的是
             # 在一轮对话结束之后，最后一句不能作为问句，需要跳到下一轮进行处理
-            if line == '':
+            if line == "":
                 one_pair = []
                 count += 1
                 continue
@@ -81,7 +81,7 @@ def to_single_turn_dataset(tokenized_data_path: str, qa_data_path: str, dict_pat
                 all_text_list.append(answer)
                 one_pair = [line]
                 sentences_count += 1
-                print('\r已处理：{}个问答对'.format(sentences_count), flush=True, end="")
+                print("\r已处理：{}个问答对".format(sentences_count), flush=True, end="")
                 if sentences_count == max_data_size:
                     break
             else:
@@ -94,7 +94,7 @@ def to_single_turn_dataset(tokenized_data_path: str, qa_data_path: str, dict_pat
 
     tokenizer = tf.keras.preprocessing.text.Tokenizer(filters="", num_words=vocab_size, oov_token=unk_sign)
     tokenizer.fit_on_texts(all_text_list)
-    with open(dict_path, 'w', encoding='utf-8') as dict_file:
+    with open(dict_path, "w", encoding="utf-8") as dict_file:
         dict_file.write(tokenizer.to_json())
 
     message = "对话数据集转换完毕，并保存字典：共处理{}轮对话数据，整理出{}对" \
@@ -120,10 +120,10 @@ def preprocess_raw_xiao_huang_ji_data(raw_data: str, tokenized_data: str, if_rem
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data, 'r', encoding="utf-8") as raw_file, open(tokenized_data, 'a',
+    with open(raw_data, "r", encoding="utf-8") as raw_file, open(tokenized_data, "a",
                                                                  encoding="utf-8") as tokenized_file:
         for line in raw_file:
-            line = line.strip('\n').replace('/', '')
+            line = line.strip("\n").replace("/", "")
             if line == "":
                 tokenized_file.write("\n")
                 count += 1
@@ -159,7 +159,7 @@ def preprocess_raw_lccc_data(raw_data_path: str, tokenized_data_path: str, remov
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data_path, 'r', encoding="utf-8") as raw_file, open(tokenized_data_path, 'a',
+    with open(raw_data_path, "r", encoding="utf-8") as raw_file, open(tokenized_data_path, "a",
                                                                       encoding="utf-8") as tokenized_file:
         raw_data_path = json.load(raw_file)
         for data in raw_data_path:
@@ -199,20 +199,20 @@ def preprocess_raw_douban_data(raw_data: str, tokenized_data: str, repeat_data: 
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data, 'r', encoding='utf-8') as raw_file, open(tokenized_data, 'a',
-                                                                 encoding='utf-8') as tokenized_file:
+    with open(raw_data, "r", encoding="utf-8") as raw_file, open(tokenized_data, "a",
+                                                                 encoding="utf-8") as tokenized_file:
         iter_count = -1
         for line in raw_file:
             iter_count += 1
             if iter_count % repeat_data != 0:
                 continue
-            line = line.strip('\n').replace('/', '')
+            line = line.strip("\n").replace("/", "")
             if line == "":
                 continue
 
             # 因为原始数据集中，是一轮一轮的对话排列的，所以需要注意的是在一轮对话结束之后，最后
             # 一句不能作为问句，需要跳到下一轮进行处理去掉最前面的标签和最后面的不正确语句
-            utterances = line.split('\t')[1:-1]
+            utterances = line.split("\t")[1:-1]
             for utterance in utterances:
                 length = len(utterance)
                 sentence_len.append(length)
@@ -246,8 +246,8 @@ def preprocess_raw_cross_woz_data(raw_data: str, tokenized_data: str, if_remove:
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data, 'r', encoding='utf-8') as raw_file, open(tokenized_data, 'a',
-                                                                 encoding='utf-8') as tokenized_file:
+    with open(raw_data, "r", encoding="utf-8") as raw_file, open(tokenized_data, "a",
+                                                                 encoding="utf-8") as tokenized_file:
         raw_data = json.load(raw_file)
         for data in raw_data:
             turn_utterances = raw_data[data]["messages"]
@@ -285,11 +285,11 @@ def preprocess_raw_tie_ba_data(raw_data: str, tokenized_data: str, if_remove: bo
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data, 'r', encoding='utf-8') as raw_file, open(tokenized_data, 'a',
-                                                                 encoding='utf-8') as tokenized_file:
+    with open(raw_data, "r", encoding="utf-8") as raw_file, open(tokenized_data, "a",
+                                                                 encoding="utf-8") as tokenized_file:
         for line in raw_file:
             line = line.strip("\n").replace("/", " ")
-            if line == '':
+            if line == "":
                 continue
 
             line = line.split("\t")
@@ -336,7 +336,7 @@ def preprocess_raw_wei_bo_data(raw_post_data: str, raw_response_data,
     """
     _check_file(raw_file=raw_post_data, processed_file=tokenized_data, remove_tokenized=if_remove)
     if not os.path.exists(raw_response_data):
-        print('数据集不存在，请添加数据集!')
+        print("数据集不存在，请添加数据集!")
         exit(0)
 
     count = 0
@@ -344,9 +344,9 @@ def preprocess_raw_wei_bo_data(raw_post_data: str, raw_response_data,
     min_len = 10000
     sentence_len = []
 
-    with open(raw_post_data, 'r', encoding='utf-8') as post_file, open(
-            raw_response_data, 'r', encoding='utf-8') as response_file, \
-            open(tokenized_data, 'a', encoding='utf-8') as tokenized_file:
+    with open(raw_post_data, "r", encoding="utf-8") as post_file, open(
+            raw_response_data, "r", encoding="utf-8") as response_file, \
+            open(tokenized_data, "a", encoding="utf-8") as tokenized_file:
         for post_data, response_data in zip(post_file, response_file):
             post_data = post_data.strip("\n").replace("/", " ")
             response_data = response_data.strip("\n").replace("/", " ")
@@ -387,8 +387,8 @@ def preprocess_raw_qin_yun_data(raw_data: str, tokenized_data: str, if_remove: b
     min_len = 10000
     sentence_len = []
 
-    with open(raw_data, 'r', encoding='utf-8') as raw_file, open(
-            tokenized_data, 'a', encoding='utf-8') as tokenized_file:
+    with open(raw_data, "r", encoding="utf-8") as raw_file, open(
+            tokenized_data, "a", encoding="utf-8") as tokenized_file:
         for line in raw_file:
             line = line.strip().strip("\n").replace("/", " ")
             if line == "":
@@ -433,8 +433,8 @@ def combine_tokenized_data_single(standby_data: list, combine_data: str, if_remo
         if not os.path.exists(file_fn):
             print("{}文件不存在，请检查之后再次运行".format(file_fn))
             exit(0)
-        with open(file_fn, 'r', encoding='utf-8') as tokenized_file, open(combine_data, 'a',
-                                                                          encoding='utf-8') as combine_file:
+        with open(file_fn, "r", encoding="utf-8") as tokenized_file, open(combine_data, "a",
+                                                                          encoding="utf-8") as combine_file:
             for line in tokenized_file:
                 line = line.strip().strip("\n").replace("/", " ")
                 combine_file.write(line + "\n")
@@ -492,7 +492,7 @@ def _check_file(raw_file: str, processed_file: str, remove_tokenized: bool = Tru
     :return: 无返回值
     """
     if not os.path.exists(raw_file):
-        print('数据集不存在： ', raw_file)
+        print("数据集不存在： ", raw_file)
         exit(0)
     # 如果if_remove为True且已经分词的文件存在，要删除，因为后面的读写操作是边读边写
     if os.path.exists(processed_file) and remove_tokenized:

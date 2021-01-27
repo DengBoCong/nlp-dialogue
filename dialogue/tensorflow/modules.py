@@ -99,7 +99,7 @@ class Modules(abc.ABC):
         :param history: 用于保存训练过程中的历史指标数据
         :return: 返回历史指标数据
         """
-        print('训练开始，正在准备数据中')
+        print("训练开始，正在准备数据中")
         train_dataset, valid_dataset, train_steps_per_epoch, valid_steps_per_epoch = load_data(
             dict_path=self.dict_path, train_data_path=train_data_path, buffer_size=self.buffer_size,
             batch_size=self.batch_size, max_sentence=self.max_sentence, valid_data_split=valid_data_split,
@@ -111,7 +111,7 @@ class Modules(abc.ABC):
         progress_bar = ProgressBar()
 
         for epoch in range(epochs):
-            print('Epoch {}/{}'.format(epoch + 1, epochs))
+            print("Epoch {}/{}".format(epoch + 1, epochs))
 
             train_metrics = self._train_step(
                 dataset=train_dataset, steps_per_epoch=train_steps_per_epoch,
@@ -133,7 +133,7 @@ class Modules(abc.ABC):
                     for key, value in valid_metrics.items():
                         history[key].append(value)
 
-        print('训练结束')
+        print("训练结束")
         return history
 
     def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> None:
@@ -143,7 +143,7 @@ class Modules(abc.ABC):
         :param max_valid_data_size: 最大验证数据量
         :return: 返回历史指标数据
         """
-        print('验证开始，正在准备数据中')
+        print("验证开始，正在准备数据中")
         _, valid_dataset, _, valid_steps_per_epoch = load_data(
             dict_path=self.dict_path, valid_data_path=valid_data_path, valid_data_type=self.valid_data_type,
             buffer_size=self.buffer_size, train_data_type=self.train_data_type, batch_size=self.batch_size,
@@ -154,7 +154,7 @@ class Modules(abc.ABC):
         _ = self._valid_step(dataset=valid_dataset, progress_bar=progress_bar,
                              steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
-        print('验证结束')
+        print("验证结束")
 
     @abc.abstractmethod
     def inference(self, *args, **kwargs) -> str:

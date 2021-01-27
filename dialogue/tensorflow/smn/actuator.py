@@ -33,37 +33,37 @@ def tf_smn() -> None:
     parser = ArgumentParser(description="smn chatbot")
     parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
     parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")
-    parser.add_argument('--config_file', default='', type=str, required=False, help='配置文件路径，为空则默认命令行，不为空则使用配置文件参数')
-    parser.add_argument('--act', default='pre_treat', type=str, required=False, help='执行类型')
-    parser.add_argument('--units', default=200, type=int, required=False, help='隐藏层单元数')
-    parser.add_argument('--vocab_size', default=2000, type=int, required=False, help='词汇大小')
-    parser.add_argument('--embedding_dim', default=200, type=int, required=False, help='嵌入层维度大小')
-    parser.add_argument('--max_sentence', default=50, type=int, required=False, help='单个句子序列最大长度')
-    parser.add_argument('--max_utterance', default=10, type=int, required=False, help='当回合最大句子数')
-    parser.add_argument('--max_train_data_size', default=36, type=int, required=False, help='用于训练的最大数据大小')
-    parser.add_argument('--max_valid_data_size', default=100, type=int, required=False, help='用于验证的最大数据大小')
+    parser.add_argument("--config_file", default="", type=str, required=False, help="配置文件路径，为空则默认命令行，不为空则使用配置文件参数")
+    parser.add_argument("--act", default="pre_treat", type=str, required=False, help="执行类型")
+    parser.add_argument("--units", default=200, type=int, required=False, help="隐藏层单元数")
+    parser.add_argument("--vocab_size", default=2000, type=int, required=False, help="词汇大小")
+    parser.add_argument("--embedding_dim", default=200, type=int, required=False, help="嵌入层维度大小")
+    parser.add_argument("--max_sentence", default=50, type=int, required=False, help="单个句子序列最大长度")
+    parser.add_argument("--max_utterance", default=10, type=int, required=False, help="当回合最大句子数")
+    parser.add_argument("--max_train_data_size", default=36, type=int, required=False, help="用于训练的最大数据大小")
+    parser.add_argument("--max_valid_data_size", default=100, type=int, required=False, help="用于验证的最大数据大小")
     parser.add_argument("--checkpoint_save_freq", default=2, type=int, required=False, help="检查点保存频率")
-    parser.add_argument('--checkpoint_save_size', default=1, type=int, required=False, help='单轮训练中检查点保存数量')
+    parser.add_argument("--checkpoint_save_size", default=1, type=int, required=False, help="单轮训练中检查点保存数量")
     parser.add_argument("--valid_data_split", default=0.0, type=float, required=False, help="从训练数据集中划分验证数据的比例")
-    parser.add_argument('--learning_rate', default=0.001, type=float, required=False, help='学习率')
-    parser.add_argument('--max_database_size', default=0, type=int, required=False, help='最大数据候选数量')
-    parser.add_argument('--dict_path', default='data\\preprocess\\smn_dict.json', type=str, required=False, help='字典路径')
-    parser.add_argument('--checkpoint_dir', default='checkpoints\\tensorflow\\smn', type=str, required=False,
-                        help='检查点路径')
-    parser.add_argument('--train_data_path', default='data\\ubuntu_train.txt', type=str, required=False,
-                        help='处理好的多轮分词训练数据集路径')
-    parser.add_argument('--valid_data_path', default='data\\ubuntu_valid.txt', type=str, required=False,
-                        help='处理好的多轮分词验证数据集路径')
-    parser.add_argument('--solr_server', default='http://49.235.33.100:8983/solr/smn/', type=str, required=False,
-                        help='solr服务地址')
-    parser.add_argument('--candidate_database', default='data\\preprocess\\candidate.json', type=str, required=False,
-                        help='候选回复数据库')
-    parser.add_argument('--epochs', default=5, type=int, required=False, help='训练步数')
-    parser.add_argument('--batch_size', default=32, type=int, required=False, help='batch大小')
-    parser.add_argument('--buffer_size', default=20000, type=int, required=False, help='Dataset加载缓冲大小')
-    parser.add_argument('--start_sign', default='<start>', type=str, required=False, help='序列开始标记')
-    parser.add_argument('--end_sign', default='<end>', type=str, required=False, help='序列结束标记')
-    parser.add_argument('--unk_sign', default='<unk>', type=str, required=False, help='未登录词')
+    parser.add_argument("--learning_rate", default=0.001, type=float, required=False, help="学习率")
+    parser.add_argument("--max_database_size", default=0, type=int, required=False, help="最大数据候选数量")
+    parser.add_argument("--dict_path", default="data\\preprocess\\smn_dict.json", type=str, required=False, help="字典路径")
+    parser.add_argument("--checkpoint_dir", default="checkpoints\\tensorflow\\smn", type=str, required=False,
+                        help="检查点路径")
+    parser.add_argument("--train_data_path", default="data\\ubuntu_train.txt", type=str, required=False,
+                        help="处理好的多轮分词训练数据集路径")
+    parser.add_argument("--valid_data_path", default="data\\ubuntu_valid.txt", type=str, required=False,
+                        help="处理好的多轮分词验证数据集路径")
+    parser.add_argument("--solr_server", default="http://49.235.33.100:8983/solr/smn/", type=str, required=False,
+                        help="solr服务地址")
+    parser.add_argument("--candidate_database", default="data\\preprocess\\candidate.json", type=str, required=False,
+                        help="候选回复数据库")
+    parser.add_argument("--epochs", default=5, type=int, required=False, help="训练步数")
+    parser.add_argument("--batch_size", default=32, type=int, required=False, help="batch大小")
+    parser.add_argument("--buffer_size", default=20000, type=int, required=False, help="Dataset加载缓冲大小")
+    parser.add_argument("--start_sign", default="<start>", type=str, required=False, help="序列开始标记")
+    parser.add_argument("--end_sign", default="<end>", type=str, required=False, help="序列结束标记")
+    parser.add_argument("--unk_sign", default="<unk>", type=str, required=False, help="未登录词")
 
     options = parser.parse_args().__dict__
     execute_type = options["act"]
@@ -99,8 +99,8 @@ def tf_smn() -> None:
                            dict_path=work_path + options["dict_path"], unk_sign=options["unk_sign"])
     elif execute_type == "train":
         history = {
-            'train_accuracy': [], 'train_loss': [], 'valid_accuracy': [],
-            'valid_loss': [], "valid_R10@1": [], "valid_R10@2": [], "valid_R10@5": []
+            "train_accuracy": [], "train_loss": [], "valid_accuracy": [],
+            "valid_loss": [], "valid_R10@1": [], "valid_R10@2": [], "valid_R10@5": []
         }
         history = modules.train(
             optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
@@ -134,5 +134,5 @@ def tf_smn() -> None:
         parser.error(message="")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     tf_smn()

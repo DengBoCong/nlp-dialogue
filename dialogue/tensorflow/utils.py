@@ -99,7 +99,7 @@ def load_tokenizer(dict_path: str) -> tf.keras.preprocessing.text.Tokenizer:
         print("字典不存在，请检查之后重试")
         exit(0)
 
-    with open(dict_path, 'r', encoding='utf-8') as dict_file:
+    with open(dict_path, "r", encoding="utf-8") as dict_file:
         json_string = dict_file.read().strip().strip("\n")
         tokenizer = tf.keras.preprocessing.text.tokenizer_from_json(json_string)
 
@@ -121,7 +121,7 @@ def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.prepr
     sentence = start_sign + " " + sentence + " " + end_sign
 
     inputs = tokenizer.texts_to_sequences([sentence])
-    inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding='post')
+    inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding="post")
 
     return inputs
 

@@ -138,7 +138,7 @@ def _read_single_data(data_path: str, max_data_size: int, max_sentence: int,
 
         for line in file:
             # 文本数据中的问答对权重通过在问答对尾部添加“<|>”配置
-            temp = line.strip().strip("\n").replace('/', '').split("<|>")
+            temp = line.strip().strip("\n").replace("/", "").split("<|>")
             qa_pairs.append([sentence for sentence in temp[0].split("\t")])
             # 如果没有配置对应问答对权重，则默认为1.
             if len(temp) == 1:
@@ -181,9 +181,9 @@ def _read_multi_turn_data(data_path: str, max_data_size: int, max_utterance: int
     label = []  # 用于保存每轮对话的标签
     count = 0  # 用于处理数据计数
 
-    with open(data_path, 'r', encoding='utf-8') as file:
+    with open(data_path, "r", encoding="utf-8") as file:
         for line in file:
-            apart = line.strip().strip("\n").replace('/', '').split('\t')
+            apart = line.strip().strip("\n").replace("/", "").split("\t")
             label.append(int(apart[0]))
             response.append(apart[-1])
             del apart[0]

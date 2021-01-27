@@ -40,17 +40,17 @@ def accumulate(units: int, embedding_dim: int, max_utterance: int, max_sentence:
     a_matrix = tf.keras.initializers.GlorotNormal()(shape=(units, units), dtype=d_type)
 
     # 这里对response进行GRU的Word级关系建模，这里用正交矩阵初始化内核权重矩阵，用于输入的线性变换。
-    response_gru = tf.keras.layers.GRU(units=units, return_sequences=True, kernel_initializer='orthogonal',
+    response_gru = tf.keras.layers.GRU(units=units, return_sequences=True, kernel_initializer="orthogonal",
                                        dtype=d_type, name="{}_gru".format(name))(response_inputs)
     conv2d_layer = tf.keras.layers.Conv2D(
-        filters=8, kernel_size=(3, 3), padding='valid', kernel_initializer='he_normal',
-        activation='relu', dtype=d_type, name="{}_conv2d".format(name)
+        filters=8, kernel_size=(3, 3), padding="valid", kernel_initializer="he_normal",
+        activation="relu", dtype=d_type, name="{}_conv2d".format(name)
     )
     max_pooling2d_layer = tf.keras.layers.MaxPooling2D(
-        pool_size=(3, 3), strides=(3, 3), padding='valid', dtype=d_type, name="{}_pooling2d".format(name)
+        pool_size=(3, 3), strides=(3, 3), padding="valid", dtype=d_type, name="{}_pooling2d".format(name)
     )
     dense_layer = tf.keras.layers.Dense(
-        50, activation='tanh', kernel_initializer='glorot_normal', dtype=d_type, name="{}_dense".format(name)
+        50, activation="tanh", kernel_initializer="glorot_normal", dtype=d_type, name="{}_dense".format(name)
     )
 
     # 这里需要做一些前提工作，因为我们要针对每个batch中的每个utterance进行运算，所
@@ -60,7 +60,7 @@ def accumulate(units: int, embedding_dim: int, max_utterance: int, max_sentence:
     for index, utterance_input in enumerate(utterance_embeddings):
         # 求解第一个相似度矩阵，公式见论文
         matrix1 = tf.matmul(utterance_input, response_inputs, transpose_b=True, name="{}_matmul_{}".format(name, index))
-        utterance_gru = tf.keras.layers.GRU(units, return_sequences=True, kernel_initializer='orthogonal',
+        utterance_gru = tf.keras.layers.GRU(units, return_sequences=True, kernel_initializer="orthogonal",
                                             dtype=d_type, name="{}_gru_{}".format(name, index))(utterance_input)
         matrix2 = tf.einsum("aij,jk->aik", utterance_gru, a_matrix)
         # matrix2 = tf.matmul(utterance_gru, a_matrix)
@@ -78,7 +78,7 @@ def accumulate(units: int, embedding_dim: int, max_utterance: int, max_sentence:
 
     vector = tf.stack(matching_vectors, axis=1, name="{}_stack".format(name))
     outputs = tf.keras.layers.GRU(
-        units, kernel_initializer='orthogonal', dtype=d_type, name="{}_gru_outputs".format(name)
+        units, kernel_initializer="orthogonal", dtype=d_type, name="{}_gru_outputs".format(name)
     )(vector)
 
     return tf.keras.Model(inputs=[utterance_inputs, response_inputs], outputs=outputs)
@@ -110,7 +110,7 @@ def smn(units: int, vocab_size: int, embedding_dim: int, max_utterance: int, max
     )(inputs=[utterances_embeddings, responses_embeddings])
 
     outputs = tf.keras.layers.Dense(
-        2, kernel_initializer='glorot_normal', dtype=d_type, name="{}_dense_outputs".format(name)
+        2, kernel_initializer="glorot_normal", dtype=d_type, name="{}_dense_outputs".format(name)
     )(accumulate_outputs)
 
     outputs = tf.keras.layers.Softmax(axis=-1, dtype=d_type, name="{}_softmax".format(name))(outputs)

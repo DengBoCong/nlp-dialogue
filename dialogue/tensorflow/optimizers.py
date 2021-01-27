@@ -47,7 +47,7 @@ def loss_func_mask(real, pred, weights=None):
     :param pred: logits张量
     :return: 损失平均值
     """
-    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+    loss_object = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")
     mask = tf.math.logical_not(tf.math.equal(real, 0))  # 填充位为0，掩蔽
 
     loss_ = loss_object(real, pred, sample_weight=weights)

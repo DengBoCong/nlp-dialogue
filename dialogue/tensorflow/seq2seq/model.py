@@ -23,7 +23,7 @@ from dialogue.tensorflow.layers import bahdanau_attention
 from dialogue.tools import log_operator
 
 
-def rnn_layer(units: int, input_feature_dim: int, cell_type: str = 'lstm', if_bidirectional: bool = True,
+def rnn_layer(units: int, input_feature_dim: int, cell_type: str = "lstm", if_bidirectional: bool = True,
               d_type: tf.dtypes.DType = tf.float32, name: str = "rnn_layer") -> tf.keras.Model:
     """ RNNCell层，其中可定义cell类型，是否双向
 
@@ -36,16 +36,16 @@ def rnn_layer(units: int, input_feature_dim: int, cell_type: str = 'lstm', if_bi
     :return: Multi-layer RNN
     """
     inputs = tf.keras.Input(shape=(None, input_feature_dim), dtype=d_type, name="{}_inputs".format(name))
-    if cell_type == 'lstm':
+    if cell_type == "lstm":
         rnn = tf.keras.layers.LSTM(units=units, return_sequences=True, return_state=True,
-                                   recurrent_initializer='glorot_uniform', dtype=d_type,
+                                   recurrent_initializer="glorot_uniform", dtype=d_type,
                                    name="{}_lstm_cell".format(name))
-    elif cell_type == 'gru':
+    elif cell_type == "gru":
         rnn = tf.keras.layers.GRU(units=units, return_sequences=True, return_state=True,
-                                  recurrent_initializer='glorot_uniform', dtype=d_type, name="{}_gru_cell".format(name))
+                                  recurrent_initializer="glorot_uniform", dtype=d_type, name="{}_gru_cell".format(name))
     else:
-        print('cell执行了类型执行出错，定位细节参见log')
-        log_operator(level=10).info("cell执行了类型执行出错")
+        print("cell执行了类型执行出错，定位细节参见log")
+        log_operator(level="INFO").info("cell执行了类型执行出错")
 
     if if_bidirectional:
         rnn = tf.keras.layers.Bidirectional(layer=rnn, dtype=d_type, name="{}_biRnn".format(name))
