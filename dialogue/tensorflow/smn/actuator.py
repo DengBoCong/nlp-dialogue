@@ -20,14 +20,13 @@ from __future__ import print_function
 
 import os
 import json
+import pysolr
 import tensorflow as tf
 from argparse import ArgumentParser
 from dialogue.tensorflow.preprocess import create_search_data
 from dialogue.tensorflow.smn.model import smn
 from dialogue.tensorflow.smn.modules import SMNModule
 from dialogue.tensorflow.utils import load_checkpoint
-from dialogue.tensorflow.utils import load_tokenizer
-from dialogue.tools import show_history
 
 
 def tf_smn() -> None:
@@ -72,7 +71,7 @@ def tf_smn() -> None:
         with open(options["config_file"], "r", encoding="utf-8") as config_file:
             options = json.load(config_file)
 
-    # 注意了有关路径的参数，以transformer目录下为基准配置
+    # 注意了有关路径的参数，以tensorflow目录下为基准配置
     file_path = os.path.abspath(__file__)
     work_path = file_path[:file_path.find("tensorflow")]
 
@@ -110,7 +109,6 @@ def tf_smn() -> None:
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
             valid_data_path=work_path + options["valid_data_path"]
         )
-        print(history)
         # show_history(history=history, valid_freq=options["checkpoint_save_freq"],
         #              save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
@@ -119,17 +117,21 @@ def tf_smn() -> None:
             max_utterance=options["max_utterance"]
         )
     elif execute_type == "chat":
+        history = []  # 用于存放历史对话
+        solr = pysolr.Solr(url=options["solr_server"], always_commit=True, timeout=10)
+
         print("Agent: 你好！结束聊天请输入ESC。")
         while True:
             request = input("User: ")
             if request == "ESC":
                 print("Agent: 再见！")
                 exit(0)
-            response = modules.inference(request=request, beam_size=options["beam_size"],
-                                         start_sign=options["start_sign"], end_sign=options["end_sign"])
+            history.append(request)
+            response = modules.inference(request=history, solr=solr, max_utterance=options["max_utterance"])
+            history.append(response)
             print("Agent: ", response)
     else:
-        parser.error(msg="")
+        parser.error(message="")
 
 
 if __name__ == '__main__':

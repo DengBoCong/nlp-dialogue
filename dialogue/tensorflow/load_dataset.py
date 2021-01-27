@@ -204,7 +204,7 @@ def _read_multi_turn_data(data_path: str, max_data_size: int, max_utterance: int
         utterance_len = len(utterance_padding)
         # 如果当前轮次中的历史语句不足max_utterances数量，需要在尾部进行填充
         if utterance_len != max_utterance:
-            utterance_padding += [[0]] * (max_utterance - utterance_len)
+            utterance_padding = [[0]] * (max_utterance - utterance_len) + utterance_padding
         utterances.append(tf.keras.preprocessing.sequence.pad_sequences(
             utterance_padding, maxlen=max_sentence, padding="post").tolist())
 

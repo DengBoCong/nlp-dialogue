@@ -82,7 +82,7 @@ def tf_transformer() -> None:
         with open(options["config_file"], "r", encoding="utf-8") as config_file:
             options = json.load(config_file)
 
-    # 注意了有关路径的参数，以transformer目录下为基准配置
+    # 注意了有关路径的参数，以tensorflow目录下为基准配置
     file_path = os.path.abspath(__file__)
     work_path = file_path[:file_path.find("tensorflow")]
 

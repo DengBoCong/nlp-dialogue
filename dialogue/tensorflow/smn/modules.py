@@ -19,12 +19,13 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+import pysolr
 import tensorflow as tf
 from dialogue.metrics import recall_at_position_k_in_n
 from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
+from dialogue.tensorflow.utils import get_tf_idf_top_k
 from dialogue.tensorflow.utils import load_tokenizer
-from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
 
@@ -58,8 +59,7 @@ class SMNModule(Modules):
         for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
             with tf.GradientTape() as tape:
                 scores = self.model(inputs=[utterances, response])
-                loss = tf.keras.losses.SparseCategoricalCrossentropy(
-                    from_logits=True, reduction=tf.keras.losses.Reduction.AUTO)(label, scores)
+                loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, scores)
 
             self.loss_metric(loss)
             self.accuracy_metric(label, scores)
@@ -94,8 +94,7 @@ class SMNModule(Modules):
         labels = tf.constant([], dtype=self.model.dtype)
         for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
             score = self.model(inputs=[utterances, response])
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(
-                from_logits=True, reduction=tf.keras.losses.Reduction.AUTO)(label, score)
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, score)
 
             self.loss_metric(loss)
             self.accuracy_metric(label, score)
@@ -116,43 +115,48 @@ class SMNModule(Modules):
 
         return message
 
-    def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> str:
+    def inference(self, request: list, solr: pysolr.Solr, max_utterance: int,
+                  d_type: tf.dtypes.DType = tf.float32, *args, **kwargs) -> str:
         """ 对话推断模块
 
-        :param request: 输入句子
-        :param beam_size: beam大小
-        :param start_sign: 句子开始标记
-        :param end_sign: 句子结束标记
+        :param request: 输入对话历史
+        :param solr: solr服务
+        :param max_utterance: 每轮最大语句数
+        :param d_type: 运算精度
         :return: 返回历史指标数据
         """
         tokenizer = load_tokenizer(self.dict_path)
 
-        enc_input = preprocess_request(sentence=request, tokenizer=tokenizer,
-                                       max_length=self.max_length, start_sign=start_sign, end_sign=end_sign)
-        enc_output, states = self.encoder(inputs=enc_input)
-        dec_input = tf.expand_dims([tokenizer.word_index.get(start_sign)], 0)
+        history = request[-max_utterance:]
+        pad_sequences = [0] * self.max_sentence
+        utterance = tokenizer.texts_to_sequences(history)
+        utterance_len = len(utterance)
 
-        beam_search_container = BeamSearch(beam_size=beam_size, max_length=self.max_length, worst_score=0)
-        beam_search_container.reset(enc_output=enc_output, dec_input=dec_input, remain=states)
-        enc_output, dec_input, states = beam_search_container.get_search_inputs()
+        # 如果当前轮次中的历史语句不足max_utterances数量，需要在尾部进行填充
+        if utterance_len != max_utterance:
+            utterance = [pad_sequences] * (max_utterance - utterance_len) + utterance
+        utterance = tf.keras.preprocessing.sequence.pad_sequences(sequences=utterance,
+                                                                  maxlen=self.max_sentence, padding="post")
 
-        for t in range(self.max_length):
-            predictions, _, _ = self.decoder(inputs=[dec_input, enc_output, states])
-            predictions = tf.nn.softmax(predictions, axis=-1)
+        tf_idf = get_tf_idf_top_k(history=history, k=5)
+        query = "{!func}sum("
+        for key in tf_idf:
+            query += "product(idf(utterance," + key + "),tf(utterance," + key + ")),"
+        query += ")"
+        candidates = solr.search(q=query, start=0, rows=10).docs
+        candidates = [candidate["utterance"][0] for candidate in candidates]
 
-            beam_search_container.expand(predictions=predictions, end_sign=tokenizer.word_index.get(end_sign))
-            if beam_search_container.beam_size == 0:
-                break
+        if candidates is None:
+            return "Sorry! I didn't hear clearly, can you say it again?"
+        else:
+            utterances = [utterance] * len(candidates)
+            responses = tokenizer.texts_to_sequences(candidates)
+            responses = tf.keras.preprocessing.sequence.pad_sequences(sequences=responses,
+                                                                      maxlen=self.max_sentence, padding="post")
 
-            enc_output, dec_input, states = beam_search_container.get_search_inputs()
-            dec_input = tf.expand_dims(input=dec_input[:, -1], axis=-1)
+            utterances = tf.convert_to_tensor(value=utterances)
+            responses = tf.convert_to_tensor(value=responses)
+            scores = self.model(inputs=[utterances, responses])
 
-        beam_search_result = beam_search_container.get_result(top_k=3)
-        result = ''
-        # 从容器中抽取序列，生成最终结果
-        for i in range(len(beam_search_result)):
-            temp = beam_search_result[i].numpy()
-            text = tokenizer.sequences_to_texts(temp)
-            text[0] = text[0].replace(start_sign, '').replace(end_sign, '').replace(' ', '')
-            result = '<' + text[0] + '>' + result
-        return result
+            index = tf.argmax(input=scores[:, 1])
+            return candidates[index]
