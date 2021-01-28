@@ -19,8 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import abc
+import time
 import tensorflow as tf
 from dialogue.tensorflow.load_dataset import load_data
+from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
 
 
@@ -59,13 +61,12 @@ class Modules(abc.ABC):
         self.decoder = decoder
 
     @abc.abstractmethod
-    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """该方法用于定于训练步中，模型实际训练的核心代码（在train方法中使用）
 
         Note:
             a): 返回所得指标字典
-            b): 参数如dataset、optimizer为模型训练必需
+            b): batch_dataset、optimizer为模型训练必需
         """
 
         raise NotImplementedError("Must be implemented in subclasses.")
@@ -113,10 +114,17 @@ class Modules(abc.ABC):
         for epoch in range(epochs):
             print("Epoch {}/{}".format(epoch + 1, epochs))
 
-            train_metrics = self._train_step(
-                dataset=train_dataset, steps_per_epoch=train_steps_per_epoch,
-                progress_bar=progress_bar, optimizer=optimizer, **kwargs
-            )
+            start_time = time.time()
+            self.loss_metric.reset_states()
+            self.accuracy_metric.reset_states()
+            progress_bar.reset(total=train_steps_per_epoch, num=self.batch_size)
+
+            for (batch, batch_dataset) in enumerate(train_dataset.take(train_steps_per_epoch)):
+                train_metrics = self._train_step(batch_dataset=batch_dataset, optimizer=optimizer, **kwargs)
+
+                progress_bar(current=batch + 1, metrics=get_dict_string(data=train_metrics))
+
+            progress_bar.done(step_time=time.time() - start_time)
 
             for key, value in train_metrics.items():
                 history[key].append(value)

@@ -22,7 +22,6 @@ import time
 import pysolr
 import tensorflow as tf
 from dialogue.metrics import recall_at_position_k_in_n
-from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
 from dialogue.tensorflow.utils import get_tf_idf_top_k
 from dialogue.tensorflow.utils import load_tokenizer
@@ -41,35 +40,22 @@ class SMNModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
-        :param dataset: 训练步的dataset
-        :param steps_per_epoch: 训练总步数
-        :param progress_bar: 进度管理器
+        :param batch_dataset: 训练步的当前batch数据
         :param optimizer: 优化器
         :return: 返回所得指标字典
         """
-        start_time = time.time()
-        self.loss_metric.reset_states()
-        self.accuracy_metric.reset_states()
-        progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
+        utterances, response, label = batch_dataset
+        with tf.GradientTape() as tape:
+            scores = self.model(inputs=[utterances, response])
+            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, scores)
 
-        for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
-            with tf.GradientTape() as tape:
-                scores = self.model(inputs=[utterances, response])
-                loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, scores)
-
-            self.loss_metric(loss)
-            self.accuracy_metric(label, scores)
-            gradients = tape.gradient(target=loss, sources=self.model.trainable_variables)
-            optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
-
-            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
-                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
-
-        progress_bar.done(step_time=time.time() - start_time)
+        self.loss_metric(loss)
+        self.accuracy_metric(label, scores)
+        gradients = tape.gradient(target=loss, sources=self.model.trainable_variables)
+        optimizer.apply_gradients(zip(gradients, self.model.trainable_variables))
 
         return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 

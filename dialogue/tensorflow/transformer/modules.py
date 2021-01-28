@@ -26,6 +26,7 @@ from dialogue.tensorflow.optimizers import loss_func_mask
 from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tools import ProgressBar
+from dialogue.tools import get_dict_string
 
 
 class TransformerModule(Modules):
@@ -39,40 +40,28 @@ class TransformerModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    @tf.function(autograph=True)
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
-        :param dataset: 训练步的dataset
-        :param steps_per_epoch: 训练总步数
-        :param progress_bar: 进度管理器
+        :param batch_dataset: 训练步的当前batch数据
         :param optimizer: 优化器
         :return: 返回所得指标字典
         """
-        start_time = time.time()
-        self.loss_metric.reset_states()
-        self.accuracy_metric.reset_states()
-        progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
+        inputs, targets, weights = batch_dataset
+        target_input = targets[:, :-1]
+        target_real = targets[:, 1:]
+        with tf.GradientTape() as tape:
+            enc_outputs, padding_mask = self.encoder(inputs=inputs)
+            predictions = self.decoder(inputs=[target_input, enc_outputs, padding_mask])
+            loss = loss_func_mask(real=target_real, pred=predictions, weights=weights)
 
-        for (batch, (inputs, targets, weights)) in enumerate(dataset.take(steps_per_epoch)):
-            target_input = targets[:, :-1]
-            target_real = targets[:, 1:]
-            with tf.GradientTape() as tape:
-                enc_outputs, padding_mask = self.encoder(inputs=inputs)
-                predictions = self.decoder(inputs=[target_input, enc_outputs, padding_mask])
-                loss = loss_func_mask(real=target_real, pred=predictions, weights=weights)
+        variables = self.encoder.trainable_variables + self.decoder.trainable_variables
+        gradients = tape.gradient(target=loss, sources=variables)
+        optimizer.apply_gradients(zip(gradients, variables))
 
-            variables = self.encoder.trainable_variables + self.decoder.trainable_variables
-            gradients = tape.gradient(target=loss, sources=variables)
-            optimizer.apply_gradients(zip(gradients, variables))
-
-            self.loss_metric(loss)
-            self.accuracy_metric(target_real, predictions)
-
-            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
-                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
-
-        progress_bar.done(step_time=time.time() - start_time)
+        self.loss_metric(loss)
+        self.accuracy_metric(target_real, predictions)
 
         return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 
@@ -92,20 +81,30 @@ class TransformerModule(Modules):
         progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
 
         for (batch, (inputs, targets, _)) in enumerate(dataset.take(steps_per_epoch)):
-            target_input = targets[:, :-1]
-            target_real = targets[:, 1:]
-
-            encoder_outputs, padding_mask = self.encoder(inputs=inputs)
-            predictions = self.decoder(inputs=[target_input, encoder_outputs, padding_mask])
-            loss = loss_func_mask(target_real, predictions)
-
-            self.loss_metric(loss)
-            self.accuracy_metric(target_real, predictions)
-
-            progress_bar(current=batch + 1, metrics="- valid_loss: {:.4f} - valid_accuracy: {:.4f}"
-                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
+            result = self._valid_one_step(inputs=inputs, targets=targets)
+            progress_bar(current=batch + 1, metrics=get_dict_string(data=result))
 
         progress_bar.done(step_time=time.time() - start_time)
+
+        return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
+
+    @tf.function(autograph=True)
+    def _valid_one_step(self, inputs: tf.Tensor, targets: tf.Tensor) -> dict:
+        """ 单个验证步
+
+        :param inputs: batch输入
+        :param targets: batch验证目标
+        :return: 返回所得batch指标字典
+        """
+        target_input = targets[:, :-1]
+        target_real = targets[:, 1:]
+
+        encoder_outputs, padding_mask = self.encoder(inputs=inputs)
+        predictions = self.decoder(inputs=[target_input, encoder_outputs, padding_mask])
+        loss = loss_func_mask(target_real, predictions)
+
+        self.loss_metric(loss)
+        self.accuracy_metric(target_real, predictions)
 
         return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
 
@@ -130,10 +129,8 @@ class TransformerModule(Modules):
         enc_output, dec_input, padding_mask = beam_search_container.get_search_inputs()
 
         for t in range(self.max_sentence):
-            predictions = self.decoder(inputs=[dec_input, enc_output, padding_mask])
-            predictions = tf.nn.softmax(predictions, axis=-1)
-            predictions = predictions[:, -1:, :]
-            predictions = tf.squeeze(predictions, axis=1)
+            predictions = self._inference_one_step(dec_input=dec_input,
+                                                   enc_output=enc_output, padding_mask=padding_mask)
 
             beam_search_container.expand(predictions=predictions, end_sign=tokenizer.word_index.get(end_sign))
             # 注意了，如果BeamSearch容器里的beam_size为0了，说明已经找到了相应数量的结果，直接跳出循环
@@ -150,3 +147,19 @@ class TransformerModule(Modules):
             text[0] = text[0].replace(start_sign, "").replace(end_sign, "").replace(" ", "")
             result = "<" + text[0] + ">" + result
         return result
+
+    @tf.function
+    def _inference_one_step(self, dec_input: tf.Tensor, enc_output: tf.Tensor, padding_mask: tf.Tensor):
+        """ 单个推断步
+
+        :param dec_input: decoder输入
+        :param enc_output: encoder输出
+        :param padding_mask: encoder的padding mask
+        :return: 单个token结果
+        """
+        predictions = self.decoder(inputs=[dec_input, enc_output, padding_mask])
+        predictions = tf.nn.softmax(predictions, axis=-1)
+        predictions = predictions[:, -1:, :]
+        predictions = tf.squeeze(predictions, axis=1)
+
+        return predictions

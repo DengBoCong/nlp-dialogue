@@ -39,44 +39,33 @@ class Seq2SeqModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _train_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    @tf.function
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
-        :param dataset: 训练步的dataset
-        :param steps_per_epoch: 训练总步数
-        :param progress_bar: 进度管理器
+        :param batch_dataset: 训练步的当前batch数据
         :param optimizer: 优化器
         :return: 返回所得指标字典
         """
-        start_time = time.time()
-        self.loss_metric.reset_states()
-        self.accuracy_metric.reset_states()
-        progress_bar.reset(total=steps_per_epoch, num=self.batch_size)
+        inputs, targets, weights = batch_dataset
+        dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
-        for (batch, (inputs, targets, weights)) in enumerate(dataset.take(steps_per_epoch)):
-            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
-            with tf.GradientTape() as tape:
-                loss = 0
-                enc_output, states = self.encoder(inputs=inputs)
-                for t in range(1, self.max_sentence):
-                    if sum(targets[:, t]) == 0:
-                        break
+        with tf.GradientTape() as tape:
+            loss = 0
+            enc_output, states = self.encoder(inputs=inputs)
+            for t in range(1, self.max_sentence):
+                if tf.equal(x=tf.reduce_mean(targets[:, t], axis=0), y=0):
+                    break
 
-                    predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
-                    loss += loss_func_mask(real=targets[:, t], pred=predictions, weights=weights)
-                    self.accuracy_metric(targets[:, t], predictions)
-                    dec_input = tf.expand_dims(targets[:, t], 1)
+                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
+                loss += loss_func_mask(real=targets[:, t], pred=predictions, weights=weights)
+                self.accuracy_metric(targets[:, t], predictions)
+                dec_input = tf.expand_dims(targets[:, t], 1)
 
-            self.loss_metric(loss)
-            variables = self.encoder.trainable_variables + self.decoder.trainable_variables
-            gradients = tape.gradient(target=loss, sources=variables)
-            optimizer.apply_gradients(zip(gradients, variables))
-
-            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
-                         .format(self.loss_metric.result(), self.accuracy_metric.result()))
-
-        progress_bar.done(step_time=time.time() - start_time)
+        self.loss_metric(loss)
+        variables = self.encoder.trainable_variables + self.decoder.trainable_variables
+        gradients = tape.gradient(target=loss, sources=variables)
+        optimizer.apply_gradients(zip(gradients, variables))
 
         return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 
