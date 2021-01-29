@@ -40,6 +40,7 @@ class SMNModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
+    @tf.function(autograph=True)
     def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
@@ -78,12 +79,8 @@ class SMNModule(Modules):
 
         scores = tf.constant([], dtype=self.model.dtype)
         labels = tf.constant([], dtype=self.model.dtype)
-        for (batch, (utterances, response, label)) in enumerate(dataset.take(steps_per_epoch)):
-            score = self.model(inputs=[utterances, response])
-            loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, score)
-
-            self.loss_metric(loss)
-            self.accuracy_metric(label, score)
+        for (batch, (utterances, responses, label)) in enumerate(dataset.take(steps_per_epoch)):
+            score = self._valid_ont_step(utterances=utterances, responses=responses, label=label)
             scores = tf.concat(values=[scores, score[:, 1]], axis=0)
             labels = tf.concat(values=[labels, tf.cast(x=label, dtype=self.model.dtype)], axis=0)
 
@@ -100,6 +97,24 @@ class SMNModule(Modules):
         progress_bar.done(step_time=time.time() - start_time)
 
         return message
+
+    @tf.function(autograph=True)
+    def _valid_ont_step(self, utterances: tf.Tensor, responses: tf.Tensor, label: tf.Tensor) -> tf.Tensor:
+        """ 单个验证步
+
+        :param utterances: 对话列表
+        :param responses: 响应回复
+        :param label: ground-true标签
+        :return: 计算所得分数
+        """
+
+        score = self.model(inputs=[utterances, responses])
+        loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction="none")(label, score)
+
+        self.loss_metric(loss)
+        self.accuracy_metric(label, score)
+
+        return score
 
     def inference(self, request: list, solr: pysolr.Solr, max_utterance: int,
                   d_type: tf.dtypes.DType = tf.float32, *args, **kwargs) -> str:
@@ -142,7 +157,20 @@ class SMNModule(Modules):
 
             utterances = tf.convert_to_tensor(value=utterances)
             responses = tf.convert_to_tensor(value=responses)
-            scores = self.model(inputs=[utterances, responses])
+            index = self._inference_one_step(utterances=utterances, responses=responses)
 
-            index = tf.argmax(input=scores[:, 1])
             return candidates[index]
+
+    @tf.function(autograph=True)
+    def _inference_one_step(self, utterances: tf.Tensor, responses: tf.Tensor) -> tf.Tensor:
+        """ 单个推断步
+
+        :param utterances: 对话列表
+        :param responses: 响应回复
+        :return: 最大概率响应索引
+        """
+
+        scores = self.model(inputs=[utterances, responses])
+        index = tf.argmax(input=scores[:, 1])
+
+        return index

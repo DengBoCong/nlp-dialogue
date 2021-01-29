@@ -39,7 +39,7 @@ class Seq2SeqModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    @tf.function
+    @tf.function(autograph=True)
     def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """训练步
 
@@ -47,16 +47,13 @@ class Seq2SeqModule(Modules):
         :param optimizer: 优化器
         :return: 返回所得指标字典
         """
+        loss = 0.
         inputs, targets, weights = batch_dataset
-        dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
 
         with tf.GradientTape() as tape:
-            loss = 0
             enc_output, states = self.encoder(inputs=inputs)
+            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
             for t in range(1, self.max_sentence):
-                if tf.equal(x=tf.reduce_mean(targets[:, t], axis=0), y=0):
-                    break
-
                 predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
                 loss += loss_func_mask(real=targets[:, t], pred=predictions, weights=weights)
                 self.accuracy_metric(targets[:, t], predictions)
@@ -85,20 +82,7 @@ class Seq2SeqModule(Modules):
         progress_bar = ProgressBar(total=steps_per_epoch, num=self.batch_size)
 
         for (batch, (inputs, target, _)) in enumerate(dataset.take(steps_per_epoch)):
-            enc_output, states = self.encoder(inputs=inputs)
-            dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
-
-            loss = 0
-            for t in range(1, self.max_sentence):
-                if sum(target[:, t]) == 0:
-                    break
-
-                predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
-                loss += loss_func_mask(real=target[:, t], pred=predictions)
-                dec_input = tf.expand_dims(target[:, t], 1)
-
-                self.accuracy_metric(target[:, t], predictions)
-
+            loss = self._valid_one_step(inputs=inputs, target=target, **kwargs)
             self.loss_metric(loss)
             progress_bar(current=batch + 1, metrics="- train_loss: {:.4f} - train_accuracy: {:.4f}"
                          .format(self.loss_metric.result(), self.accuracy_metric.result()))
@@ -106,6 +90,20 @@ class Seq2SeqModule(Modules):
         progress_bar.done(step_time=time.time() - start_time)
 
         return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
+
+    @tf.function(autograph=True)
+    def _valid_one_step(self, inputs: tf.Tensor, target: tf.Tensor, **kwargs) -> tf.Tensor:
+        loss = 0
+        enc_output, states = self.encoder(inputs=inputs)
+        dec_input = tf.expand_dims(input=[kwargs.get("start_sign", 2)] * self.batch_size, axis=1)
+        for t in range(1, self.max_sentence):
+            predictions, states, _ = self.decoder(inputs=[dec_input, enc_output, states])
+            loss += loss_func_mask(real=target[:, t], pred=predictions)
+            dec_input = tf.expand_dims(target[:, t], 1)
+
+            self.accuracy_metric(target[:, t], predictions)
+
+        return loss
 
     def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> str:
         """ 对话推断模块
