@@ -41,7 +41,7 @@ def encoder(vocab_size: int, num_layers: int, units: int, embedding_dim: int, nu
     """
     inputs = tf.keras.Input(shape=(None,), name="{}_inputs".format(name), dtype=d_type)
     padding_mask = tf.keras.layers.Lambda(create_padding_mask, output_shape=(1, 1, None),
-                                          name="{}_padding_mask".format(name))(inputs, d_type)
+                                          name="{}_padding_mask".format(name))(inputs)
     embeddings = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim,
                                            dtype=d_type, name="{}_embeddings".format(name))(inputs)
     embeddings *= tf.math.sqrt(x=tf.cast(x=embedding_dim, dtype=d_type), name="{}_sqrt".format(name))
@@ -76,7 +76,7 @@ def decoder(vocab_size: int, num_layers: int, units: int, embedding_dim: int, nu
     padding_mask = tf.keras.Input(shape=(1, 1, None), dtype=d_type, name="{}_padding_mask".format(name))
 
     look_ahead_mask = tf.keras.layers.Lambda(combine_mask, output_shape=(1, None, None),
-                                             name="{}_look_ahead_mask".format(name))(inputs, d_type)
+                                             name="{}_look_ahead_mask".format(name))(inputs)
     embeddings = tf.keras.layers.Embedding(input_dim=vocab_size, output_dim=embedding_dim, dtype=d_type,
                                            name="{}_embeddings".format(name))(inputs)
 

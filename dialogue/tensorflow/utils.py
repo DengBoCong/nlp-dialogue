@@ -24,7 +24,7 @@ import tensorflow as tf
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 
-def combine_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32):
+def combine_mask(seq: tf.Tensor):
     """对input中的不能见单位进行mask
 
     :param seq: 输入序列
@@ -32,18 +32,17 @@ def combine_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32):
     :return: mask
     """
     look_ahead_mask = _create_look_ahead_mask(seq)
-    padding_mask = create_padding_mask(seq, d_type=d_type)
+    padding_mask = create_padding_mask(seq)
     return tf.maximum(look_ahead_mask, padding_mask)
 
 
-def create_padding_mask(seq: tf.Tensor, d_type: tf.dtypes.DType = tf.float32) -> tf.Tensor:
+def create_padding_mask(seq: tf.Tensor) -> tf.Tensor:
     """ 用于创建输入序列的扩充部分的mask
 
     :param seq: 输入序列
-    :param d_type: 运算精度
     :return: mask
     """
-    seq = tf.cast(tf.math.equal(seq, 0), d_type)
+    seq = tf.cast(x=tf.math.equal(seq, 0), dtype=tf.float32)
     return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
 
 

@@ -148,7 +148,7 @@ class TransformerModule(Modules):
             result = "<" + text[0] + ">" + result
         return result
 
-    @tf.function
+    # @tf.function(autograph=True, experimental_relax_shapes=True)
     def _inference_one_step(self, dec_input: tf.Tensor, enc_output: tf.Tensor, padding_mask: tf.Tensor):
         """ 单个推断步
 

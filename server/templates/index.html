@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="static/css/antd.min.css">
+    <link rel="shortcut icon" href="static/favicon.ico">
+    <script src="static/js/vue.js"></script>
+    <script src="static/js/moment.js"></script>
+    <script src="static/js/antd.min.js"></script>
+    <script src="static/js/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+    <a-layout id="components-layout-demo-top-side" style="height: 100%">
+        <a-layout-header style="background-color: #ffffff">
+            <div class="logo">
+                <!--                <span>DengBoCong</span>-->
+            </div>
+            <a-menu
+                    theme="light"
+                    mode="horizontal"
+                    :default-selected-keys="['1']"
+                    :style="{ lineHeight: '64px' }"
+            >
+                <a-menu-item key="1">
+                    <a-icon type="deployment-unit"></a-icon>
+                    Transformer
+                </a-menu-item>
+                <a-menu-item key="2">
+                    <a-icon type="gateway"></a-icon>
+                    SMN
+                </a-menu-item>
+                <a-menu-item key="3">
+                    <a-icon type="apartment"></a-icon>
+                    Seq2Seq
+                </a-menu-item>
+                <a-menu-item key="4">
+                    <a-icon type="cluster"></a-icon>
+                    Task
+                </a-menu-item>
+            </a-menu>
+        </a-layout-header>
+        <a-layout-content style="padding: 0 50px;">
+            <a-breadcrumb style="margin: 16px 0">
+                <a-breadcrumb-item>对话系统</a-breadcrumb-item>
+                <a-breadcrumb-item>开放域任务对话</a-breadcrumb-item>
+                <a-breadcrumb-item>Transformer</a-breadcrumb-item>
+            </a-breadcrumb>
+            <a-layout style="padding: 24px 0; background: #fff">
+                <a-layout-sider width="200" style="background: #fff">
+                    <a-row :gutter="16">
+                        <a-col :span="4" style="margin-top: 32px;">
+                        </a-col>
+                        <a-col :span="20" style="margin-top: 32px;">
+                            <a-statistic-countdown
+                                    title="Million Seconds"
+                                    :value="deadline"
+                                    format="HH:mm:ss:SSS"
+                                    style="margin-right: 50px"
+                            ></a-statistic-countdown>
+                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
+                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
+                            <a-statistic title="单元数" :value="512"></a-statistic>
+                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
+                            <a-statistic title="层数" :value="2"></a-statistic>
+                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
+                            <a-statistic title="词典词数" :value="1500"></a-statistic>
+                        </a-col>
+                    </a-row>
+                </a-layout-sider>
+                <a-layout-content :style="{ padding: '0 24px', minHeight: '700px' }">
+                    <a-descriptions title="Model Info" bordered>
+                        <a-descriptions-item label="模型名称">
+                            Transformer
+                        </a-descriptions-item>
+                        <a-descriptions-item label="模型大小">
+                            271.67MB
+                        </a-descriptions-item>
+                        <a-descriptions-item label="是否开启验证">
+                            YES
+                        </a-descriptions-item>
+                        <a-descriptions-item label="上线时间">
+                            2021-01-30 16:50:13
+                        </a-descriptions-item>
+                        <a-descriptions-item label="训练周期" :span="2">
+                            2021-01-30 16:50:13
+                        </a-descriptions-item>
+                        <a-descriptions-item label="Config Info">
+                            数据库类型: MySQL
+                            <br/>
+                            数据库版本: 5.7
+                            <br/>
+                            内部Encoder层数：2层
+                            <br/>
+                            内部Decoder层数：2层
+                            <br/>
+                            Multi-Attention数量：8
+                            <br/>
+                        </a-descriptions-item>
+                    </a-descriptions>
+                    <div>
+                        <a-list
+                                v-if="comments.length"
+                                :data-source="comments"
+                                :header="`${comments.length} ${comments.length > 1 ? 'replies' : 'reply'}`"
+                                item-layout="horizontal">
+                            <a-list-item slot="renderItem" slot-scope="item, index">
+                                <a-comment
+                                        :author="item.author"
+                                        :avatar="item.avatar"
+                                        :content="item.content"
+                                        :datetime="item.datetime">
+                                </a-comment>
+                            </a-list-item>
+                        </a-list>
+                        <a-comment>
+                            <a-avatar
+                                    slot="avatar"
+                                    src="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
+                                    alt="Han Solo">
+                            </a-avatar>
+                            <div slot="content">
+                                <a-form-item>
+                                    <a-textarea :rows="4" :value="value" @change="handleChange"></a-textarea>
+                                </a-form-item>
+                                <a-form-item>
+                                    <a-button html-type="submit" :loading="submitting" type="primary"
+                                              @click="handleSubmit">
+                                        发送
+                                    </a-button>
+                                </a-form-item>
+                            </div>
+                        </a-comment>
+                    </div>
+                </a-layout-content>
+            </a-layout>
+        </a-layout-content>
+        <a-layout-footer style="text-align: center">
+            © Copyright 2020-2021 DengBoCong. All Rights Reserved. 赣ICP备20002291号
+        </a-layout-footer>
+    </a-layout>
+</div>
+</body>
+
+<script>
+    new Vue({
+        el: '#app',
+        data: function () {
+            return {
+                comments: [],
+                submitting: false,
+                value: '',
+                moment,
+                deadline: Date.now() + 1000 * 60 * 60 * 24 * 2 + 1000 * 30,
+            }
+        },
+        methods: {
+            handleSubmit() {
+                if (!this.value) {
+                    return;
+                }
+                this.submitting = true;
+
+                axios({
+                    method: 'post',
+                    url: '/message',
+                    data: {'name': this.value}
+                }).then((response) => {
+                    this.submitting = false;
+                    console.log(response.data)
+                    this.value = response.data
+                    this.comments = [
+                        {
+                            author: 'DengBoCong',
+                            avatar: 'https://img-blog.csdnimg.cn/20200522154246646.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0RCQ18xMjE=,size_16,color_FFFFFF,t_70',
+                            content: this.value,
+                            datetime: moment().fromNow(),
+                        },
+                        ...this.comments,
+                    ];
+                    this.value = '';
+                }).catch((error) => {
+                    console.log(error)
+                })
+            },
+            handleChange(e) {
+                this.value = e.target.value;
+            },
+            onFinish() {
+                console.log('finished!');
+            },
+        }
+    })
+</script>
+<style>
+    html, body {
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        margin: 0;
+        padding: 0;
+        background: #fff;
+    }
+
+    #app {
+        width: 100%;
+        height: 100%;
+    }
+
+    .el-scrollbar__wrap {
+        overflow-x: hidden;
+    }
+
+    #components-layout-demo-top-side .logo {
+        width: 120px;
+        height: 31px;
+        background: rgba(255, 255, 255, 0.2);
+        margin: 16px 28px 16px 0;
+        float: left;
+    }
+</style>
+</html>

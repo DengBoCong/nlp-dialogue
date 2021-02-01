@@ -1,5 +1,7 @@
-numpy==1.18.5
-jieba==0.42.1
-tensorflow==2.3.1
-sklearn
-pysolr
+tensorflow>=2.3.1
+jieba=0.42.1
+inflect=5.0.2
+numpy=1.19.0
+pysolr=3.9.0
+flask=1.1.2
+scikit-learn=0.23.2
