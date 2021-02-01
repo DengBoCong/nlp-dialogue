@@ -71,6 +71,10 @@ def tf_seq2seq() -> None:
     parser.add_argument("--start_sign", default="<start>", type=str, required=False, help="序列开始标记")
     parser.add_argument("--end_sign", default="<end>", type=str, required=False, help="序列结束标记")
     parser.add_argument("--unk_sign", default="<unk>", type=str, required=False, help="未登录词")
+    parser.add_argument("--encoder_save_path", default="models\\tensorflow\\seq2seq\\encoder", type=str,
+                        required=False, help="Encoder的SaveModel格式保存路径")
+    parser.add_argument("--decoder_save_path", default="models\\tensorflow\\seq2seq\\decoder", type=str,
+                        required=False, help="Decoder的SaveModel格式保存路径")
 
     options = parser.parse_args().__dict__
     execute_type = options["act"]
@@ -121,7 +125,9 @@ def tf_seq2seq() -> None:
             train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
             checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
-            start_sign=tokenizer.word_index.get(options["start_sign"])
+            start_sign=tokenizer.word_index.get(options["start_sign"]),
+            encoder_save_path=work_path + options["encoder_save_path"],
+            decoder_save_path=work_path + options["decoder_save_path"]
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])

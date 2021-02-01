@@ -47,7 +47,7 @@
                 <a-breadcrumb-item>Transformer</a-breadcrumb-item>
             </a-breadcrumb>
             <a-layout style="padding: 24px 0; background: #fff">
-                <a-layout-sider width="200" style="background: #fff">
+                <a-layout-sider width="200" style="background: #fff; overflow: auto;height: 100vh">
                     <a-row :gutter="16">
                         <a-col :span="4" style="margin-top: 32px;">
                         </a-col>
@@ -58,6 +58,20 @@
                                     format="HH:mm:ss:SSS"
                                     style="margin-right: 50px"
                             ></a-statistic-countdown>
+                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
+                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
+                            <a-statistic title="单元数" :value="512"></a-statistic>
+                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
+                            <a-statistic title="层数" :value="2"></a-statistic>
+                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
+                            <a-statistic title="词典词数" :value="1500"></a-statistic>
+                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
+                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
+                            <a-statistic title="单元数" :value="512"></a-statistic>
+                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
+                            <a-statistic title="层数" :value="2"></a-statistic>
+                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
+                            <a-statistic title="词典词数" :value="1500"></a-statistic>
                             <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
                             <a-statistic title="词嵌入大小" :value="512"></a-statistic>
                             <a-statistic title="单元数" :value="512"></a-statistic>

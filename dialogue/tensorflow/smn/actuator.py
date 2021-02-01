@@ -64,6 +64,8 @@ def tf_smn() -> None:
     parser.add_argument("--start_sign", default="<start>", type=str, required=False, help="序列开始标记")
     parser.add_argument("--end_sign", default="<end>", type=str, required=False, help="序列结束标记")
     parser.add_argument("--unk_sign", default="<unk>", type=str, required=False, help="未登录词")
+    parser.add_argument("--model_save_path", default="models\\tensorflow\\smn", type=str,
+                        required=False, help="SaveModel格式保存路径")
 
     options = parser.parse_args().__dict__
     execute_type = options["act"]
@@ -107,7 +109,8 @@ def tf_smn() -> None:
             train_data_path=work_path + options["train_data_path"], max_utterance=options["max_utterance"],
             checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
-            valid_data_path=work_path + options["valid_data_path"]
+            valid_data_path=work_path + options["valid_data_path"],
+            model_save_path=work_path + options["model_save_path"]
         )
         # show_history(history=history, valid_freq=options["checkpoint_save_freq"],
         #              save_dir=work_path + options["history_image_dir"])

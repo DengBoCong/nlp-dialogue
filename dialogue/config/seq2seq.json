@@ -8,7 +8,7 @@
   "decoder_layers": 2,
   "max_train_data_size": 0,
   "max_valid_data_size": 0,
-  "max_length": 40,
+  "max_sentence": 40,
   "dict_path": "data\\\\preprocess\\\\seq2seq_dict.json",
   "checkpoint_dir": "checkpoints\\\\tensorflow\\\\seq2seq",
   "resource_data_path": "data\\\\LCCC.json",
@@ -26,5 +26,7 @@
   "epochs": 5,
   "start_sign": "<start>",
   "end_sign": "<end>",
-  "unk_sign": "<unk>"
+  "unk_sign": "<unk>",
+  "encoder_save_path": "models\\tensorflow\\seq2seq\\encoder",
+  "decoder_save_path": "models\\tensorflow\\seq2seq\\decoder"
 }

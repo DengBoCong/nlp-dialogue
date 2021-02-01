@@ -83,6 +83,16 @@ class Modules(abc.ABC):
 
         raise NotImplementedError("Must be implemented in subclasses.")
 
+    @abc.abstractmethod
+    def _save_model(self, **kwargs) -> None:
+        """ 将模型保存为SaveModel格式
+
+        Note:
+            如果不在train之后保存SaveModel，子类继承实现这个方法时，直接pass即可
+        """
+
+        raise NotImplementedError("Must be implemented in subclasses.")
+
     def train(self, optimizer: tf.optimizers.Adam, checkpoint: tf.train.CheckpointManager, train_data_path: str,
               epochs: int, checkpoint_save_freq: int, valid_data_split: float = 0.0, max_train_data_size: int = 0,
               valid_data_path: str = "", max_valid_data_size: int = 0, history: dict = {}, **kwargs) -> dict:
@@ -142,6 +152,7 @@ class Modules(abc.ABC):
                         history[key].append(value)
 
         print("训练结束")
+        self._save_model(**kwargs)
         return history
 
     def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> None:

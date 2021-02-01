@@ -9,7 +9,7 @@
   "learning_rate_beta_2": 0.98,
   "max_train_data_size": 200,
   "max_valid_data_size": 100,
-  "max_length": 40,
+  "max_sentence": 40,
   "valid_data_file": "",
   "valid_freq": 5,
   "checkpoint_save_freq": 2,
@@ -28,5 +28,7 @@
   "tokenized_data_path": "data\\preprocess\\lccc_tokenized.txt",
   "preprocess_data_path": "data\\preprocess\\single_tokenized.txt",
   "valid_data_path": "data\\preprocess\\single_tokenized.txt",
-  "history_image_dir": "data\\history\\transformer\\"
+  "history_image_dir": "data\\history\\transformer\\",
+  "encoder_save_path": "models\\tensorflow\\transformer\\encoder",
+  "decoder_save_path": "models\\tensorflow\\transformer\\decoder"
 }

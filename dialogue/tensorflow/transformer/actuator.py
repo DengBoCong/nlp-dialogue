@@ -75,6 +75,10 @@ def tf_transformer() -> None:
                         required=False, help="处理好的单轮分词验证评估用数据集路径")
     parser.add_argument("--history_image_dir", default="data\\history\\transformer\\", type=str, required=False,
                         help="数据指标图表保存路径")
+    parser.add_argument("--encoder_save_path", default="models\\tensorflow\\transformer\\encoder", type=str,
+                        required=False, help="Encoder的SaveModel格式保存路径")
+    parser.add_argument("--decoder_save_path", default="models\\tensorflow\\transformer\\decoder", type=str,
+                        required=False, help="Decoder的SaveModel格式保存路径")
 
     options = parser.parse_args().__dict__
     execute_type = options["act"]
@@ -124,6 +128,8 @@ def tf_transformer() -> None:
             train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
             checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
             max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
+            encoder_save_path=work_path + options["encoder_save_path"],
+            decoder_save_path=work_path + options["decoder_save_path"]
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])
