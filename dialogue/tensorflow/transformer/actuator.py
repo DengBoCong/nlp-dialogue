@@ -23,9 +23,9 @@ import json
 import tensorflow as tf
 from argparse import ArgumentParser
 import dialogue.tensorflow.transformer.model as transformer
+from dialogue.preprocess_corpus import preprocess_dataset
 from dialogue.tensorflow.optimizers import CustomSchedule
-from dialogue.tensorflow.preprocess_corpus import preprocess_dataset
-from dialogue.tensorflow.preprocess_corpus import to_single_turn_dataset
+from dialogue.tensorflow.preprocess import to_single_turn_dataset
 from dialogue.tensorflow.transformer.modules import TransformerModule
 from dialogue.tensorflow.utils import load_checkpoint
 from dialogue.tools import show_history
