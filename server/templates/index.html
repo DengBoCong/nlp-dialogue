@@ -2,157 +2,134 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <link rel="stylesheet" href="static/css/antd.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/ant-design-vue@1.7.2/dist/antd.min.css">
     <link rel="shortcut icon" href="static/favicon.ico">
-    <script src="static/js/vue.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12"></script>
     <script src="static/js/moment.js"></script>
-    <script src="static/js/antd.min.js"></script>
-    <script src="static/js/axios.min.js"></script>
+    <script src="https://unpkg.com/ant-design-vue@1.7.2/dist/antd.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
 </head>
 <body>
 <div id="app">
-    <a-layout id="components-layout-demo-top-side" style="height: 100%">
-        <a-layout-header style="background-color: #ffffff">
-            <div class="logo">
-                <!--                <span>DengBoCong</span>-->
-            </div>
-            <a-menu
-                    theme="light"
-                    mode="horizontal"
-                    :default-selected-keys="['1']"
-                    :style="{ lineHeight: '64px' }"
-            >
-                <a-menu-item key="1">
-                    <a-icon type="deployment-unit"></a-icon>
-                    Transformer
-                </a-menu-item>
-                <a-menu-item key="2">
-                    <a-icon type="gateway"></a-icon>
-                    SMN
-                </a-menu-item>
-                <a-menu-item key="3">
-                    <a-icon type="apartment"></a-icon>
-                    Seq2Seq
-                </a-menu-item>
-                <a-menu-item key="4">
-                    <a-icon type="cluster"></a-icon>
-                    Task
-                </a-menu-item>
-            </a-menu>
-        </a-layout-header>
-        <a-layout-content style="padding: 0 50px;">
-            <a-breadcrumb style="margin: 16px 0">
-                <a-breadcrumb-item>对话系统</a-breadcrumb-item>
-                <a-breadcrumb-item>开放域任务对话</a-breadcrumb-item>
-                <a-breadcrumb-item>Transformer</a-breadcrumb-item>
-            </a-breadcrumb>
-            <a-layout style="padding: 24px 0; background: #fff">
-                <a-layout-sider width="200" style="background: #fff; overflow: auto;height: 100vh">
+    <a-spin :spinning="spinning" size="large">
+        <a-layout id="components-layout-demo-top-side" style="height: 100%">
+            <a-layout-header style="background-color: #ffffff">
+                <div class="logo">
+                    <!--                <span>DengBoCong</span>-->
+                </div>
+                <a-menu
+                        theme="light"
+                        mode="horizontal"
+                        :default-selected-keys="['1']"
+                        :style="{ lineHeight: '64px' }"
+                        @click="changeModel"
+                >
+                    <a-menu-item key="transformer">
+                        <a-icon type="deployment-unit"></a-icon>
+                        Transformer
+                    </a-menu-item>
+                    <a-menu-item key="smn">
+                        <a-icon type="gateway"></a-icon>
+                        SMN
+                    </a-menu-item>
+                    <a-menu-item key="seq2seq">
+                        <a-icon type="apartment"></a-icon>
+                        Seq2Seq
+                    </a-menu-item>
+                    <!--                    <a-menu-item key="4">-->
+                    <!--                        <a-icon type="cluster"></a-icon>-->
+                    <!--                        Task-->
+                    <!--                    </a-menu-item>-->
+                </a-menu>
+            </a-layout-header>
+            <a-layout-content style="padding: 0 50px;">
+                <a-breadcrumb style="margin: 16px 0">
+                    <a-breadcrumb-item>对话系统</a-breadcrumb-item>
+                    <a-breadcrumb-item>开放域任务对话</a-breadcrumb-item>
+                    <a-breadcrumb-item>{{modelName}}</a-breadcrumb-item>
+                </a-breadcrumb>
+                <a-layout style="padding: 24px 0; background: #fff" :style="{height: screenHeight}">
                     <a-row :gutter="16">
-                        <a-col :span="4" style="margin-top: 32px;">
+                        <a-col :span="12">
+                            <a-layout-content :style="{'padding': '24px', 'height': commentHeight, 'overflow': 'auto'}">
+                                <a-list
+                                        v-if="comments.length"
+                                        :data-source="comments"
+                                        :header="`${comments.length} ${comments.length > 1 ? 'replies' : 'reply'}`"
+                                        item-layout="horizontal">
+                                    <a-list-item slot="renderItem" slot-scope="item, index">
+                                        <a-comment
+                                                :author="item.author"
+                                                :avatar="item.avatar"
+                                                :content="item.content"
+                                                :datetime="item.datetime">
+                                            <a-comment
+                                                    :author="item.author"
+                                                    :avatar="item.avatar"
+                                                    :content="item.content"
+                                                    :datetime="item.datetime">
+                                            </a-comment>
+                                        </a-comment>
+                                    </a-list-item>
+                                </a-list>
+                            </a-layout-content>
+                            <a-layout-footer :style="{'background-color': 'transparent', 'padding': '0px'}">
+                                <a-comment>
+                                    <a-row style="">
+                                        <a-col :span="20">
+                                            <a-textarea :rows="3" :value="value" @change="handleChange"></a-textarea>
+                                        </a-col>
+                                        <a-col :span="4" style="padding: 8px">
+                                            <a-button html-type="submit" :loading="submitting" type="primary"
+                                                      @click="handleSubmit"
+                                                      style="float:right;width: 100%;margin-top: -5px;">
+                                                发送
+                                            </a-button>
+                                            <a-button html-type="submit" :loading="submitting" type="primary"
+                                                      @click="handleSubmit"
+                                                      style="float:right;width: 100%;margin-top: 3px;">
+                                                聊天
+                                            </a-button>
+                                        </a-col>
+                                    </a-row>
+                                </a-comment>
+                            </a-layout-footer>
                         </a-col>
-                        <a-col :span="20" style="margin-top: 32px;">
-                            <a-statistic-countdown
-                                    title="Million Seconds"
-                                    :value="deadline"
-                                    format="HH:mm:ss:SSS"
-                                    style="margin-right: 50px"
-                            ></a-statistic-countdown>
-                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
-                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
-                            <a-statistic title="单元数" :value="512"></a-statistic>
-                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
-                            <a-statistic title="层数" :value="2"></a-statistic>
-                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
-                            <a-statistic title="词典词数" :value="1500"></a-statistic>
-                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
-                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
-                            <a-statistic title="单元数" :value="512"></a-statistic>
-                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
-                            <a-statistic title="层数" :value="2"></a-statistic>
-                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
-                            <a-statistic title="词典词数" :value="1500"></a-statistic>
-                            <a-statistic title="学习率" :precision="2" :value="0.98/0.9"></a-statistic>
-                            <a-statistic title="词嵌入大小" :value="512"></a-statistic>
-                            <a-statistic title="单元数" :value="512"></a-statistic>
-                            <a-statistic title="句子最大长度" :value="40"></a-statistic>
-                            <a-statistic title="层数" :value="2"></a-statistic>
-                            <a-statistic title="多头注意力数" :value="8"></a-statistic>
-                            <a-statistic title="词典词数" :value="1500"></a-statistic>
+                        <a-col :span="12">
+                            <a-layout-content :style="{'padding': '24px', 'height': infoHeight, 'overflow': 'auto'}">
+                                <a-descriptions title="Model Info">
+                                    <a-descriptions-item label="模型名称">
+                                        {{modelName}}
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="推断模式">
+                                        静态图推断
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="是否训练模型">
+                                        YES
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="启动时间">
+                                        {{deadline}}
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="运行时间" :span="2">
+                                        {{deadline}}
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="Status" :span="3">
+                                        <a-badge :status="status" :text="status"></a-badge>
+                                    </a-descriptions-item>
+                                    <a-descriptions-item label="Config Info">
+                                        <a-tag v-for="key, value in options">{{value}} : {{key}}</a-tag>
+                                    </a-descriptions-item>
+                                </a-descriptions>
+                            </a-layout-content>
                         </a-col>
                     </a-row>
-                </a-layout-sider>
-                <a-layout-content :style="{ padding: '0 24px', minHeight: '700px' }">
-                    <a-descriptions title="Model Info" bordered>
-                        <a-descriptions-item label="模型名称">
-                            Transformer
-                        </a-descriptions-item>
-                        <a-descriptions-item label="模型大小">
-                            271.67MB
-                        </a-descriptions-item>
-                        <a-descriptions-item label="是否开启验证">
-                            YES
-                        </a-descriptions-item>
-                        <a-descriptions-item label="上线时间">
-                            2021-01-30 16:50:13
-                        </a-descriptions-item>
-                        <a-descriptions-item label="训练周期" :span="2">
-                            2021-01-30 16:50:13
-                        </a-descriptions-item>
-                        <a-descriptions-item label="Config Info">
-                            数据库类型: MySQL
-                            <br/>
-                            数据库版本: 5.7
-                            <br/>
-                            内部Encoder层数：2层
-                            <br/>
-                            内部Decoder层数：2层
-                            <br/>
-                            Multi-Attention数量：8
-                            <br/>
-                        </a-descriptions-item>
-                    </a-descriptions>
-                    <div>
-                        <a-list
-                                v-if="comments.length"
-                                :data-source="comments"
-                                :header="`${comments.length} ${comments.length > 1 ? 'replies' : 'reply'}`"
-                                item-layout="horizontal">
-                            <a-list-item slot="renderItem" slot-scope="item, index">
-                                <a-comment
-                                        :author="item.author"
-                                        :avatar="item.avatar"
-                                        :content="item.content"
-                                        :datetime="item.datetime">
-                                </a-comment>
-                            </a-list-item>
-                        </a-list>
-                        <a-comment>
-                            <a-avatar
-                                    slot="avatar"
-                                    src="https://zos.alipayobjects.com/rmsportal/ODTLcjxAfvqbxHnVXCYX.png"
-                                    alt="Han Solo">
-                            </a-avatar>
-                            <div slot="content">
-                                <a-form-item>
-                                    <a-textarea :rows="4" :value="value" @change="handleChange"></a-textarea>
-                                </a-form-item>
-                                <a-form-item>
-                                    <a-button html-type="submit" :loading="submitting" type="primary"
-                                              @click="handleSubmit">
-                                        发送
-                                    </a-button>
-                                </a-form-item>
-                            </div>
-                        </a-comment>
-                    </div>
-                </a-layout-content>
-            </a-layout>
-        </a-layout-content>
-        <a-layout-footer style="text-align: center">
-            © Copyright 2020-2021 DengBoCong. All Rights Reserved. 赣ICP备20002291号
-        </a-layout-footer>
-    </a-layout>
+                </a-layout>
+            </a-layout-content>
+            <a-layout-footer style="text-align: center">
+                © Copyright 2020-2021 DengBoCong. All Rights Reserved.
+            </a-layout-footer>
+        </a-layout>
+    </a-spin>
 </div>
 </body>
 
@@ -161,11 +138,19 @@
         el: '#app',
         data: function () {
             return {
+                spinning: false,
+                infoHeight: 0,
+                commentHeight: 0,
+                screenHeight: 0,
                 comments: [],
                 submitting: false,
                 value: '',
                 moment,
-                deadline: Date.now() + 1000 * 60 * 60 * 24 * 2 + 1000 * 30,
+                status: 'processing',
+                options: {},
+                deadline: Date.now(),
+                url: '/transformer/message',
+                modelName: '',
             }
         },
         methods: {
@@ -177,7 +162,7 @@
 
                 axios({
                     method: 'post',
-                    url: '/message',
+                    url: this.url,
                     data: {'name': this.value}
                 }).then((response) => {
                     this.submitting = false;
@@ -200,10 +185,37 @@
             handleChange(e) {
                 this.value = e.target.value;
             },
-            onFinish() {
-                console.log('finished!');
+            changeModel(item, key, keyPath) {
+                this.url = "/" + item.key + "/message"
+                this.spinning = true
+                axios({
+                    method: 'get',
+                    url: "/" + item.key,
+                }).then((response) => {
+                    this.modelName = response.data.model
+                    this.status = response.data.status
+                    this.options = response.data.options
+                    this.spinning = false
+                }).catch((error) => {
+                    console.log(error)
+                })
             },
-        }
+        },
+        mounted() {
+            this.infoHeight = document.body.clientHeight - 240 + "px";
+            this.commentHeight = document.body.clientHeight - 340 + "px";
+            this.screenHeight = document.body.clientHeight + "px";
+            axios({
+                method: 'get',
+                url: '/transformer'
+            }).then((response) => {
+                this.modelName = response.data.model
+                this.status = response.data.status
+                this.options = response.data.options
+            }).catch((error) => {
+                console.log(error)
+            })
+        },
     })
 </script>
 <style>

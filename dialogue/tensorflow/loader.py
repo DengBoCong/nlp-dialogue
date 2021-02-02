@@ -33,6 +33,8 @@ def load_transformer(config_path: str) -> TransformerModule:
     :return: TransformerModule
     """
     options, work_path = check_and_read_path(config_path=config_path)
+    if options is None:
+        return None
 
     encoder = tf.keras.models.load_model(filepath=(work_path + options["encoder_save_path"]).replace("\\", "/"))
     decoder = tf.keras.models.load_model(filepath=(work_path + options["decoder_save_path"]).replace("\\", "/"))
@@ -50,6 +52,8 @@ def load_seq2seq(config_path: str) -> Seq2SeqModule:
     :return: Seq2SeqModule
     """
     options, work_path = check_and_read_path(config_path=config_path)
+    if options is None:
+        return None
 
     encoder = tf.keras.models.load_model(filepath=(work_path + options["encoder_save_path"]).replace("\\", "/"))
     decoder = tf.keras.models.load_model(filepath=(work_path + options["decoder_save_path"]).replace("\\", "/"))
@@ -67,6 +71,8 @@ def load_smn(config_path: str) -> SMNModule:
     :return: Seq2SeqModule
     """
     options, work_path = check_and_read_path(config_path=config_path)
+    if options is None:
+        return None
 
     model = tf.keras.models.load_model(filepath=(work_path + options["model_save_path"]).replace("\\", "/"))
     modules = SMNModule(max_sentence=options["max_sentence"], dict_path=work_path + options["dict_path"], model=model)
@@ -82,7 +88,7 @@ def check_and_read_path(config_path: str) -> tuple:
     """
     if config_path == "":
         print("加载失败")
-        exit(0)
+        return None, None
 
     with open(config_path, "r", encoding="utf-8") as config_file:
         options = json.load(config_file)

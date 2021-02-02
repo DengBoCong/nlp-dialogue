@@ -18,33 +18,102 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import json
 from flask import Flask
 from flask import render_template
 from flask import request
-from flask import jsonify
-# from dialogue.tensorflow.loader import load_seq2seq
-# from dialogue.tensorflow.loader import load_smn
-# from dialogue.tensorflow.loader import load_transformer
+from flask_cors import CORS
+from dialogue.tensorflow.loader import load_seq2seq
+from dialogue.tensorflow.loader import load_smn
+from dialogue.tensorflow.loader import load_transformer
+from dialogue.tensorflow.modules import Modules
 
-# transformer = load_transformer(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\transformer.json")
-# seq2seq = load_seq2seq(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\seq2seq.json")
-# smn = load_smn(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\smn.json")
+transformer = load_transformer(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\transformer.json")
+seq2seq = load_seq2seq(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\seq2seq.json")
+smn = load_smn(config_path=r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\smn.json")
 
 application = Flask(__name__, static_url_path="/static")
+CORS(application, supports_credentials=True)
+application.jinja_env.variable_start_string = "[["
+application.jinja_env.variable_end_string = "]]"
+
+
+def load_running_msg(data: dict, modules: Modules) -> None:
+    data["status"] = "error" if modules is None else "processing"
 
 
 @application.route("/")
-def home():
-    return render_template("/index.html")
+def index():
+    return render_template("index.html")
 
 
-@application.route("/message", methods=['POST'])
-def response():
+@application.route("/transformer", methods=['GET'])
+def transformer_page():
+    message = {}
+
+    with open(r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\transformer.json",
+              "r", encoding="utf-8") as config_file:
+        options = json.load(config_file)
+    message["options"] = options
+
+    load_running_msg(data=message, modules=transformer)
+    message["model"] = "Transformer"
+
+    return message
+
+
+@application.route("/seq2seq")
+def seq2seq_page():
+    message = {}
+
+    with open(r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\seq2seq.json",
+              "r", encoding="utf-8") as config_file:
+        options = json.load(config_file)
+    message["options"] = options
+
+    load_running_msg(data=message, modules=seq2seq)
+    message["model"] = "Seq2Seq"
+
+    return message
+
+
+@application.route("/smn")
+def smn_page():
+    message = {}
+
+    with open(r"D:\DengBoCong\Project\nlp-dialogue\dialogue\config\smn.json",
+              "r", encoding="utf-8") as config_file:
+        options = json.load(config_file)
+    message["options"] = options
+
+    load_running_msg(data=message, modules=smn)
+    message["model"] = "SMN"
+
+    return message
+
+
+@application.route("/transformer/message", methods=['POST'])
+def transformer_inference():
     data = request.get_json(silent=True)
     re = data['name']
-    # response = transformer.inference(request=re, beam_size=3)
-    res = "哈哈哈"
-    return res
+    response = transformer.inference(request=re, beam_size=3)
+    return response
+
+
+@application.route("/seq2seq/message", methods=['POST'])
+def seq2seq__inference():
+    data = request.get_json(silent=True)
+    re = data['name']
+    response = seq2seq.inference(request=re, beam_size=3)
+    return response
+
+
+@application.route("/smn/message", methods=['POST'])
+def smn__inference():
+    data = request.get_json(silent=True)
+    re = data['name']
+    response = smn.inference(request=re, beam_size=3)
+    return response
 
 
 if __name__ == '__main__':
