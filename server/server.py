@@ -19,6 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+import pysolr
 from flask import Flask
 from flask import render_template
 from flask import request
@@ -36,6 +37,8 @@ application = Flask(__name__, static_url_path="/static")
 CORS(application, supports_credentials=True)
 application.jinja_env.variable_start_string = "[["
 application.jinja_env.variable_end_string = "]]"
+history = []  # 用于存放历史对话
+solr = pysolr.Solr(url="http://49.235.33.100:8983/solr/smn/", always_commit=True, timeout=10)
 
 
 def load_running_msg(data: dict, modules: Modules) -> None:
@@ -112,7 +115,9 @@ def seq2seq__inference():
 def smn__inference():
     data = request.get_json(silent=True)
     re = data['name']
-    response = smn.inference(request=re, beam_size=3)
+    history.append(re)
+    response = smn.inference(request=history, solr=solr, max_utterance=10)
+    history.append(response)
     return response
 
 

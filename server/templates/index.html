@@ -61,11 +61,11 @@
                                         <a-comment
                                                 :author="item.author"
                                                 :avatar="item.avatar"
-                                                :content="item.content"
+                                                :content="item.request"
                                                 :datetime="item.datetime">
                                             <a-comment
-                                                    :author="item.author"
-                                                    :avatar="item.avatar"
+                                                    author="机器人"
+                                                    :avatar="item.reAvatar"
                                                     :content="item.content"
                                                     :datetime="item.datetime">
                                             </a-comment>
@@ -97,7 +97,7 @@
                         </a-col>
                         <a-col :span="12">
                             <a-layout-content :style="{'padding': '24px', 'height': infoHeight, 'overflow': 'auto'}">
-                                <a-descriptions title="Model Info">
+                                <a-descriptions title="模型信息">
                                     <a-descriptions-item label="模型名称">
                                         {{modelName}}
                                     </a-descriptions-item>
@@ -113,10 +113,10 @@
                                     <a-descriptions-item label="运行时间" :span="2">
                                         {{deadline}}
                                     </a-descriptions-item>
-                                    <a-descriptions-item label="Status" :span="3">
+                                    <a-descriptions-item label="运行状态" :span="3">
                                         <a-badge :status="status" :text="status"></a-badge>
                                     </a-descriptions-item>
-                                    <a-descriptions-item label="Config Info">
+                                    <a-descriptions-item label="模型配置信息">
                                         <a-tag v-for="key, value in options">{{value}} : {{key}}</a-tag>
                                     </a-descriptions-item>
                                 </a-descriptions>
@@ -145,6 +145,7 @@
                 comments: [],
                 submitting: false,
                 value: '',
+                response: '',
                 moment,
                 status: 'processing',
                 options: {},
@@ -166,13 +167,14 @@
                     data: {'name': this.value}
                 }).then((response) => {
                     this.submitting = false;
-                    console.log(response.data)
-                    this.value = response.data
+                    this.response = response.data
                     this.comments = [
                         {
                             author: 'DengBoCong',
                             avatar: 'https://img-blog.csdnimg.cn/20200522154246646.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0RCQ18xMjE=,size_16,color_FFFFFF,t_70',
-                            content: this.value,
+                            reAvatar: 'https://img-blog.csdnimg.cn/20200622113122977.jpg?x-oss-process=image/watermark,type_ZmFuZ3poZW5naGVpdGk,shadow_10,text_aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L0RCQ18xMjE=,size_16,color_FFFFFF,t_70',
+                            content: this.response,
+                            request: this.value,
                             datetime: moment().fromNow(),
                         },
                         ...this.comments,
@@ -186,6 +188,7 @@
                 this.value = e.target.value;
             },
             changeModel(item, key, keyPath) {
+                this.comments = []
                 this.url = "/" + item.key + "/message"
                 this.spinning = true
                 axios({
