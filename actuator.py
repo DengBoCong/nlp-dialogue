@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import sys
 from argparse import ArgumentParser
+from dialogue.pytorch.seq2seq.actuator import torch_seq2seq
 from dialogue.tensorflow.seq2seq.actuator import tf_seq2seq
 from dialogue.tensorflow.smn.actuator import tf_smn
 from dialogue.tensorflow.transformer.actuator import tf_transformer
@@ -37,7 +38,8 @@ def main() -> None:
             "smn": lambda: tf_smn(),
         },
         "torch": {
-            "transformer": None
+            "transformer": lambda: None,
+            "seq2seq": lambda: torch_seq2seq(),
         }
     }
 

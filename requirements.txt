@@ -1,4 +1,5 @@
 tensorflow>=2.3.1
+pytorch=1.7.1
 jieba=0.42.1
 inflect=5.0.2
 numpy=1.19.0
