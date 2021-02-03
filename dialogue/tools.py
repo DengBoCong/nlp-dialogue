@@ -1,10 +1,13 @@
 import os
 import re
 import sys
+import json
 import time
 import logging
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
+from collections import defaultdict
+from collections import OrderedDict
 
 
 def log_operator(level: str, log_file: str = None,
@@ -150,3 +153,220 @@ def get_dict_string(data: dict, prefix: str = "- ", precision: str = ": {:.4f} "
         result += (prefix + key + precision).format(value)
 
     return result
+
+
+def text_to_word_sequence(text, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=" "):
+    """ 将文本转化为token序列
+
+    :param text: 文本列表
+    :param filters: 过滤规则，默认过滤所有标点符号、制表符、换行符等
+    :param lower: 是否将文本转化为lowercase
+    :param split: 分隔符
+    """
+    if lower:
+        text = text.lower()
+
+    translate_dict = {c: split for c in filters}
+    translate_map = str.maketrans(translate_dict)
+    text = text.translate(translate_map)
+
+    seq = text.split(split)
+    return [i for i in seq if i]
+
+
+class Tokenizer(object):
+    """文本分词工具类"""
+
+    def __init__(self, num_words=None, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True,
+                 split=' ', char_level=False, oov_token=None, document_count=0) -> None:
+        """
+        :param num_words: 最大token保存数量，基于出现频率
+        :param filters: 过滤规则，默认过滤所有标点符号、制表符、换行符等
+        :param lower: 是否将文本转化为lowercase
+        :param split: 分隔符
+        :param char_level: 是否以字符为token
+        :param oov_token: 未登录词
+        :param document_count: 总的文本句子数量
+        """
+
+        self.word_counts = OrderedDict()
+        self.word_docs = defaultdict(int)
+        self.filters = filters
+        self.split = split
+        self.lower = lower
+        self.num_words = num_words
+        self.document_count = document_count
+        self.char_level = char_level
+        self.oov_token = oov_token
+        self.index_docs = defaultdict(int)
+        self.word_index = {}
+        self.index_word = {}
+
+    def fit_on_texts(self, texts: list) -> None:
+        """ 更新内部词汇表
+
+        :param texts: 文本列表
+        :return: 转换后的序列
+        """
+        for text in texts:
+            self.document_count += 1
+            if self.char_level or isinstance(text, list):
+                if self.lower:
+                    if isinstance(text, list):
+                        text = [text_elem.lower() for text_elem in text]
+                    else:
+                        text = text.lower()
+                seq = text
+            else:
+                seq = text_to_word_sequence(text, filters=self.filters, lower=self.lower, split=self.split)
+            for w in seq:
+                if w in self.word_counts:
+                    self.word_counts[w] += 1
+                else:
+                    self.word_counts[w] = 1
+            for w in set(seq):
+                # 统计一个token出现在多少个文本中
+                self.word_docs[w] += 1
+
+        wcounts = list(self.word_counts.items())
+        wcounts.sort(key=lambda x: x[1], reverse=True)
+        # 将未登录词放在词汇表首位
+        if self.oov_token is None:
+            sorted_voc = []
+        else:
+            sorted_voc = [self.oov_token]
+        sorted_voc.extend(wc[0] for wc in wcounts)
+
+        # 索引0作为保留索引
+        self.word_index = dict(zip(sorted_voc, list(range(1, len(sorted_voc) + 1))))
+
+        self.index_word = {c: w for w, c in self.word_index.items()}
+
+        for w, c in list(self.word_docs.items()):
+            self.index_docs[self.word_index[w]] = c
+
+    def texts_to_sequences(self, texts) -> list:
+        """ 将文本序列转化为token序列，注意了，只有前
+        num_words个token才会被转换，其余转换为token词
+
+        :param texts: 文本列表
+        :return: 转换后的序列
+        """
+        return list(self.texts_to_sequences_generator(texts))
+
+    def texts_to_sequences_generator(self, texts):
+        """ 将文本序列转化为token序列的生成器
+        """
+        num_words = self.num_words
+        oov_token_index = self.word_index.get(self.oov_token)
+        for text in texts:
+            if self.char_level or isinstance(text, list):
+                if self.lower:
+                    if isinstance(text, list):
+                        text = [text_elem.lower() for text_elem in text]
+                    else:
+                        text = text.lower()
+                seq = text
+            else:
+                seq = text_to_word_sequence(text, filters=self.filters, lower=self.lower, split=self.split)
+            vect = []
+            for w in seq:
+                i = self.word_index.get(w)
+                if i is not None:
+                    if num_words and i >= num_words:
+                        if oov_token_index is not None:
+                            vect.append(oov_token_index)
+                    else:
+                        vect.append(i)
+                elif self.oov_token is not None:
+                    vect.append(oov_token_index)
+            yield vect
+
+    def sequences_to_texts(self, sequences) -> list:
+        """ 将token序列转化为文本序列的生成器
+
+        :param sequences: token序列
+        :return: 转换后的文本序列
+        """
+        return list(self.sequences_to_texts_generator(sequences))
+
+    def sequences_to_texts_generator(self, sequences):
+        """ 将token序列转化为文本序列，注意了，只有前
+        num_words个token才会被转换，其余转换为token词
+
+        :param sequences: token序列
+        :return: 转换后的文本序列
+        """
+        num_words = self.num_words
+        oov_token_index = self.word_index.get(self.oov_token)
+        for seq in sequences:
+            vect = []
+            for num in seq:
+                word = self.index_word.get(num)
+                if word is not None:
+                    if num_words and num >= num_words:
+                        if oov_token_index is not None:
+                            vect.append(self.index_word[oov_token_index])
+                    else:
+                        vect.append(word)
+                elif self.oov_token is not None:
+                    vect.append(self.index_word[oov_token_index])
+            vect = ' '.join(vect)
+            yield vect
+
+    def get_config(self) -> dict:
+        """ 获取分词器的配置字典 """
+        json_word_counts = json.dumps(self.word_counts)
+        json_word_docs = json.dumps(self.word_docs)
+        json_index_docs = json.dumps(self.index_docs)
+        json_word_index = json.dumps(self.word_index)
+        json_index_word = json.dumps(self.index_word)
+
+        return {
+            'num_words': self.num_words,
+            'filters': self.filters,
+            'lower': self.lower,
+            'split': self.split,
+            'char_level': self.char_level,
+            'oov_token': self.oov_token,
+            'document_count': self.document_count,
+            'word_counts': json_word_counts,
+            'word_docs': json_word_docs,
+            'index_docs': json_index_docs,
+            'index_word': json_index_word,
+            'word_index': json_word_index
+        }
+
+    def to_json(self, **kwargs) -> str:
+        """ 将分词器相关数据转化为json格式返回
+        """
+        config = self.get_config()
+        tokenizer_config = {
+            'class_name': self.__class__.__name__,
+            'config': config
+        }
+        return json.dumps(tokenizer_config, **kwargs)
+
+
+def tokenizer_from_json(json_string) -> Tokenizer:
+    """ 将Tokenizer序列化的json转化为Tokenizer实例
+    """
+    tokenizer_config = json.loads(json_string)
+    config = tokenizer_config.get('config')
+
+    word_counts = json.loads(config.pop('word_counts'))
+    word_docs = json.loads(config.pop('word_docs'))
+    index_docs = json.loads(config.pop('index_docs'))
+    index_docs = {int(k): v for k, v in index_docs.items()}
+    index_word = json.loads(config.pop('index_word'))
+    index_word = {int(k): v for k, v in index_word.items()}
+    word_index = json.loads(config.pop('word_index'))
+
+    tokenizer = Tokenizer(**config)
+    tokenizer.word_counts = word_counts
+    tokenizer.word_docs = word_docs
+    tokenizer.index_docs = index_docs
+    tokenizer.word_index = word_index
+    tokenizer.index_word = index_word
+
+    return tokenizer
