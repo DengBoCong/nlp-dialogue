@@ -18,15 +18,34 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+from dialogue.read_data import read_data
 from dialogue.tools import load_tokenizer
+from typing import Tuple
+from torch.utils.data import DataLoader
+from torch.utils.data import Dataset
 
-def load_data(dict_path: str, buffer_size: int, batch_size: int, train_data_type: str, valid_data_type: str,
+
+class PairDataset(Dataset):
+    """ 专门用于问答对形式的数据集构建的dataset，用于配合DataLoader使用 """
+
+    def __init__(self, inputs, target, diag_weight):
+        self.first_tensor = inputs
+        self.second_tensor = target
+        self.third_tensor = diag_weight
+
+    def __getitem__(self, item):
+        return self.first_tensor[item], self.second_tensor[item], self.third_tensor[item]
+
+    def __len__(self):
+        return len(self.first_tensor)
+
+
+def load_data(dict_path: str, batch_size: int, train_data_type: str, valid_data_type: str,
               max_sentence: int, valid_data_split: float = 0.0, train_data_path: str = "", valid_data_path: str = "",
-              max_train_data_size: int = 0, max_valid_data_size: int = 0, **kwargs):
+              max_train_data_size: int = 0, max_valid_data_size: int = 0, num_workers: int = 2, **kwargs) -> Tuple:
     """ 数据加载方法
 
     :param dict_path: 字典路径
-    :param buffer_size: Dataset加载缓存大小
     :param batch_size: Dataset加载批大小
     :param train_data_type: 读取训练数据类型，单轮/多轮...
     :param valid_data_type: 读取验证数据类型，单轮/多轮...
@@ -36,6 +55,7 @@ def load_data(dict_path: str, buffer_size: int, batch_size: int, train_data_type
     :param valid_data_path: 验证数据文本路径
     :param max_train_data_size: 最大训练数据量
     :param max_valid_data_size: 最大验证数据量
+    :param num_workers: 数据加载器的工作线程
     :return: 训练Dataset、验证Dataset、训练数据总共的步数、验证数据总共的步数和检查点前缀
     """
     tokenizer = load_tokenizer(dict_path=dict_path)
@@ -49,43 +69,42 @@ def load_data(dict_path: str, buffer_size: int, batch_size: int, train_data_type
     valid_first, valid_second, valid_third = None, None, None
 
     if train_data_path != "":
-        train_first, train_second, train_third = _read_data(
+        train_first, train_second, train_third = read_data(
             data_path=train_data_path, max_data_size=max_train_data_size,
             max_sentence=max_sentence, data_type=train_data_type, tokenizer=tokenizer, **kwargs
         )
     else:
         train_flag = False
 
-    print("训练数据读取中...")
-    (input_lang, target_lang), diag_weight = read_tokenized_data(train_data_path, start_sign, end_sign, max_train_data_size)
-    diag_weight = torch.tensor(diag_weight, dtype=torch.float32)
-    # 合并input，target用于生成统一的字典
-    lang = np.hstack((input_lang, target_lang))
-    print("读取完成，正在格式化训练数据...")
-    tokenizer = StaticTokenizerEncoder(sample=lang, tokenize=lambda x: x.split())
-    # 将文本序列转换文token id之后，并进行填充
-    input_data = [pad_tensor(tensor=tokenizer.encode(example)[:max_length], length=max_length, padding_index=0) for
-                  example in input_lang]
-    target_data = [pad_tensor(tensor=tokenizer.encode(example)[:max_length], length=max_length, padding_index=0) for
-                   example in target_lang]
-    input_tensor = stack_and_pad_tensors(input_data)[0]
-    target_tensor = stack_and_pad_tensors(target_data)[0]
+    if valid_data_path != "":
+        print("读取验证对话对...")
+        valid_first, valid_second, valid_third = read_data(
+            data_path=valid_data_path, max_data_size=max_valid_data_size,
+            max_sentence=max_sentence, data_type=valid_data_type, tokenizer=tokenizer, **kwargs
+        )
+    elif valid_data_split != 0.0:
+        train_size = int(len(train_first) * (1.0 - valid_data_split))
+        valid_first = train_first[train_size:]
+        valid_second = train_second[train_size:]
+        valid_third = train_third[train_size:]
+        train_first = train_first[:train_size]
+        train_second = train_second[:train_size]
+        train_third = train_third[:train_size]
+    else:
+        valid_flag = False
 
-    print("格式化完成，正在整理训练数据并保存字典")
-    word_index = {}
-    vocab_list = tokenizer.vocab
-    for i in range(tokenizer.vocab_size):
-        word_index[vocab_list[i]] = i
-        word_index[i] = vocab_list[i]
+    if train_flag:
+        train_dataset = PairDataset(train_first, train_second, train_third)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        train_steps_per_epoch = len(train_first) // batch_size
+    else:
+        train_loader = None
 
-    with open(dict_path, 'w', encoding='utf-8') as file:
-        file.write(json.dumps(word_index, indent=4, ensure_ascii=False))
-    print("数据字典保存完成！")
+    if valid_flag:
+        valid_dataset = PairDataset(valid_first, valid_second, valid_third)
+        valid_loader = DataLoader(dataset=valid_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        valid_steps_per_epoch = len(valid_first) // batch_size
+    else:
+        valid_loader = None
 
-    dataset = PairDataset(input_tensor, target_tensor, diag_weight)
-    loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    steps_per_epoch = len(input_tensor) // batch_size
-
-    return loader, steps_per_epoch
-
-
+    return train_loader, valid_loader, train_steps_per_epoch, valid_steps_per_epoch
