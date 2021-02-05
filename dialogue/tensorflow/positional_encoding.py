@@ -1,8 +1,9 @@
 import numpy as np
 import tensorflow as tf
+from typing import Tuple
 
 
-def _get_angles(pos: tf.Tensor, i: tf.Tensor, d_model: tf.Tensor) -> tf.Tensor:
+def _get_angles(pos: tf.Tensor, i: tf.Tensor, d_model: tf.Tensor) -> Tuple:
     """pos/10000^(2i/d_model)
 
     :param pos: 字符总的数量按顺序递增
@@ -14,7 +15,7 @@ def _get_angles(pos: tf.Tensor, i: tf.Tensor, d_model: tf.Tensor) -> tf.Tensor:
     return pos * angle_rates
 
 
-def positional_encoding(position: int, d_model: int, d_type: tf.dtypes.DType = tf.float32) -> tf.Tensor:
+def positional_encoding(position: int, d_model: int, d_type: tf.dtypes.DType = tf.float32) -> Tuple:
     """PE(pos,2i) = sin(pos/10000^(2i/d_model)) | PE(pos,2i+1) = cos(pos/10000^(2i/d_model))
 
     :param position: 字符总数

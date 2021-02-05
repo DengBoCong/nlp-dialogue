@@ -3,7 +3,9 @@ import re
 import sys
 import json
 import time
+import jieba
 import logging
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 from collections import defaultdict
@@ -153,6 +155,72 @@ def get_dict_string(data: dict, prefix: str = "- ", precision: str = ": {:.4f} "
         result += (prefix + key + precision).format(value)
 
     return result
+
+
+def pad_sequences(sequences, maxlen=None, dtype='int32',
+                  padding='pre', truncating='pre', value=0.):
+    """ 填充序列，如果未指定最大长度，则默认使用序列中最长长度
+
+    sequences: 需要填充的序列
+    maxlen: 最大长度
+    dtype: 输出类型
+    padding: 填充类型，pre在前，post在后
+    truncating: 截断类型，pre在前，post在后
+    value: 填充值类型，float或者是string
+    :return: 形状为(len(sequences), maxlen)的numpy数组
+    """
+    if not hasattr(sequences, '__len__'):
+        raise ValueError('`sequences` must be iterable.')
+    num_samples = len(sequences)
+
+    lengths = []
+    sample_shape = ()
+    flag = True
+
+    for x in sequences:
+        try:
+            lengths.append(len(x))
+            if flag and len(x):
+                sample_shape = np.asarray(x).shape[1:]
+                flag = False
+        except TypeError:
+            raise ValueError('`sequences` must be a list of iterables. '
+                             'Found non-iterable: ' + str(x))
+
+    if maxlen is None:
+        maxlen = np.max(lengths)
+
+    is_dtype_str = np.issubdtype(dtype, np.str_) or np.issubdtype(dtype, np.unicode_)
+    if isinstance(value, str) and dtype != object and not is_dtype_str:
+        raise ValueError("`dtype` {} is not compatible with `value`'s type: {}\n"
+                         "You should set `dtype=object` for variable length strings."
+                         .format(dtype, type(value)))
+
+    x = np.full((num_samples, maxlen) + sample_shape, value, dtype=dtype)
+    for idx, s in enumerate(sequences):
+        if not len(s):
+            continue
+        if truncating == 'pre':
+            trunc = s[-maxlen:]
+        elif truncating == 'post':
+            trunc = s[:maxlen]
+        else:
+            raise ValueError('Truncating type "%s" '
+                             'not understood' % truncating)
+
+        trunc = np.asarray(trunc, dtype=dtype)
+        if trunc.shape[1:] != sample_shape:
+            raise ValueError('Shape of sample %s of sequence at position %s '
+                             'is different from expected shape %s' %
+                             (trunc.shape[1:], idx, sample_shape))
+
+        if padding == 'post':
+            x[idx, :len(trunc)] = trunc
+        elif padding == 'pre':
+            x[idx, -len(trunc):] = trunc
+        else:
+            raise ValueError('Padding type "%s" not understood' % padding)
+    return x
 
 
 def text_to_word_sequence(text, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=" "):
@@ -350,6 +418,9 @@ class Tokenizer(object):
 
 def tokenizer_from_json(json_string) -> Tokenizer:
     """ 将Tokenizer序列化的json转化为Tokenizer实例
+
+    :param json_string: json字符串
+    :return: 分词器
     """
     tokenizer_config = json.loads(json_string)
     config = tokenizer_config.get('config')
@@ -370,3 +441,40 @@ def tokenizer_from_json(json_string) -> Tokenizer:
     tokenizer.index_word = index_word
 
     return tokenizer
+
+
+def load_tokenizer(dict_path: str) -> Tokenizer:
+    """ 通过字典加载tokenizer
+
+    :param dict_path: 字典路径
+    :return tokenizer: 分词器
+    """
+    if not os.path.exists(dict_path):
+        print("字典不存在，请检查之后重试")
+        exit(0)
+
+    with open(dict_path, "r", encoding="utf-8") as dict_file:
+        json_string = dict_file.read().strip().strip("\n")
+        tokenizer = tokenizer_from_json(json_string)
+
+    return tokenizer
+
+
+def preprocess_request(sentence: str, max_length: int, tokenizer: Tokenizer,
+                       start_sign: str = "<start>", end_sign: str = "<end>"):
+    """ 用于处理回复功能的输入句子，返回模型使用的序列
+
+    :param sentence: 待处理句子
+    :param max_length: 单个句子最大长度
+    :param tokenizer: 分词器
+    :param start_sign: 句子开始标记
+    :param end_sign: 句子结束标记
+    :return: 处理好的句子和decoder输入
+    """
+    sentence = " ".join(jieba.cut(sentence))
+    sentence = start_sign + " " + sentence + " " + end_sign
+
+    inputs = tokenizer.texts_to_sequences([sentence])
+    inputs = pad_sequences(inputs, maxlen=max_length, padding="post")
+
+    return inputs

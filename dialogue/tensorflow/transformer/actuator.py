@@ -29,9 +29,10 @@ from dialogue.tensorflow.optimizers import CustomSchedule
 from dialogue.tensorflow.transformer.modules import TransformerModule
 from dialogue.tensorflow.utils import load_checkpoint
 from dialogue.tools import show_history
+from typing import NoReturn
 
 
-def tf_transformer() -> None:
+def tf_transformer() -> NoReturn:
     """TensorFlow版transformer执行器入口
     """
     parser = ArgumentParser(description="transformer chatbot", )

@@ -20,11 +20,14 @@ from __future__ import print_function
 
 import copy
 import tensorflow as tf
+from typing import List
+from typing import NoReturn
+from typing import Tuple
 
 
 class BeamSearch(object):
 
-    def __init__(self, beam_size, max_length, worst_score):
+    def __init__(self, beam_size, max_length, worst_score) -> NoReturn:
         """
         :param beam_size: beam大小
         :param max_length: 句子最大长度
@@ -50,7 +53,7 @@ class BeamSearch(object):
         """
         return len(self.candidates)
 
-    def reset(self, enc_output: tf.Tensor, dec_input: tf.Tensor, remain: tf.Tensor) -> None:
+    def reset(self, enc_output: tf.Tensor, dec_input: tf.Tensor, remain: tf.Tensor) -> NoReturn:
         """重置搜索
 
         :param enc_output: 已经序列化的输入句子
@@ -69,7 +72,7 @@ class BeamSearch(object):
         self.result = []  # 用来保存已经遇到结束符的序列
         self.result_plus = []  # 用来保存已经遇到结束符的带概率分布的序列元素为tensor, tensor的shape为(seq_len, vocab_size)
 
-    def get_search_inputs(self) -> tuple:
+    def get_search_inputs(self) -> Tuple:
         """为下一步预测生成输入
 
         :return: enc_output, dec_inputs, remain
@@ -85,7 +88,7 @@ class BeamSearch(object):
 
         return enc_output, self.dec_inputs, remain
 
-    def _reduce_end(self, end_sign: str) -> None:
+    def _reduce_end(self, end_sign: str) -> NoReturn:
         """ 当序列遇到了结束token，需要将该序列从容器中移除
 
         :param end_sign: 句子结束标记
@@ -100,7 +103,7 @@ class BeamSearch(object):
                 del self.candidates_plus[idx]
                 self.beam_size -= 1
 
-    def expand(self, predictions, end_sign) -> None:
+    def expand(self, predictions, end_sign) -> NoReturn:
         """ 根据预测结果对候选进行扩展
         往容器中添加预测结果，在本方法中对预测结果进行整理、排序的操作
 
@@ -139,7 +142,7 @@ class BeamSearch(object):
                         self.worst_score = min(score, self.worst_score)
         self._reduce_end(end_sign=end_sign)
 
-    def get_result(self, top_k=1) -> list:
+    def get_result(self, top_k=1) -> List:
         """获得概率最高的top_k个结果
 
         :param top_k: 输出结果数量
@@ -150,7 +153,7 @@ class BeamSearch(object):
         results = [element[1] for element in sorted(self.result)[-top_k:]]
         return results
 
-    def get_result_plus(self, top_k=1) -> list:
+    def get_result_plus(self, top_k=1) -> List:
         """获得概率最高的top_k个结果
 
         :param top_k: 输出结果数量

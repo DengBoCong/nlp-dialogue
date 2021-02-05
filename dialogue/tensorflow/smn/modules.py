@@ -24,9 +24,13 @@ import tensorflow as tf
 from dialogue.metrics import recall_at_position_k_in_n
 from dialogue.tensorflow.modules import Modules
 from dialogue.tensorflow.utils import get_tf_idf_top_k
-from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tools import get_dict_string
+from dialogue.tools import load_tokenizer
 from dialogue.tools import ProgressBar
+from typing import AnyStr
+from typing import Dict
+from typing import NoReturn
+from typing import Tuple
 
 
 class SMNModule(Modules):
@@ -40,12 +44,12 @@ class SMNModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _save_model(self, **kwargs) -> None:
+    def _save_model(self, **kwargs) -> NoReturn:
         self.model.save(filepath=kwargs["model_save_path"])
         print("模型已保存为SaveModel格式")
 
     @tf.function(autograph=True)
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> Dict:
         """训练步
 
         :param batch_dataset: 训练步的当前batch数据
@@ -65,7 +69,7 @@ class SMNModule(Modules):
         return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 
     def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
+                    progress_bar: ProgressBar, *args, **kwargs) -> Dict:
         """ 验证步
 
         :param dataset: 验证步的dataset
@@ -103,7 +107,7 @@ class SMNModule(Modules):
         return message
 
     @tf.function(autograph=True)
-    def _valid_ont_step(self, utterances: tf.Tensor, responses: tf.Tensor, label: tf.Tensor) -> tf.Tensor:
+    def _valid_ont_step(self, utterances: tf.Tensor, responses: tf.Tensor, label: tf.Tensor) -> Tuple:
         """ 单个验证步
 
         :param utterances: 对话列表
@@ -121,7 +125,7 @@ class SMNModule(Modules):
         return score
 
     def inference(self, request: list, solr: pysolr.Solr, max_utterance: int,
-                  d_type: tf.dtypes.DType = tf.float32, *args, **kwargs) -> str:
+                  d_type: tf.dtypes.DType = tf.float32, *args, **kwargs) -> AnyStr:
         """ 对话推断模块
 
         :param request: 输入对话历史
@@ -166,7 +170,7 @@ class SMNModule(Modules):
             return candidates[index]
 
     @tf.function(autograph=True)
-    def _inference_one_step(self, utterances: tf.Tensor, responses: tf.Tensor) -> tf.Tensor:
+    def _inference_one_step(self, utterances: tf.Tensor, responses: tf.Tensor) -> Tuple:
         """ 单个推断步
 
         :param utterances: 对话列表

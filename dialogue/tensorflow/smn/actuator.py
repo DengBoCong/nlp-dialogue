@@ -27,9 +27,10 @@ from dialogue.tensorflow.preprocess import create_search_data
 from dialogue.tensorflow.smn.model import smn
 from dialogue.tensorflow.smn.modules import SMNModule
 from dialogue.tensorflow.utils import load_checkpoint
+from typing import NoReturn
 
 
-def tf_smn() -> None:
+def tf_smn() -> NoReturn:
     parser = ArgumentParser(description="smn chatbot")
     parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
     parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")

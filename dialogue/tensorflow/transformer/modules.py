@@ -23,10 +23,14 @@ import tensorflow as tf
 from dialogue.tensorflow.beamsearch import BeamSearch
 from dialogue.tensorflow.modules import Modules
 from dialogue.tensorflow.optimizers import loss_func_mask
-from dialogue.tensorflow.utils import load_tokenizer
-from dialogue.tensorflow.utils import preprocess_request
-from dialogue.tools import ProgressBar
 from dialogue.tools import get_dict_string
+from dialogue.tools import load_tokenizer
+from dialogue.tools import preprocess_request
+from dialogue.tools import ProgressBar
+from typing import AnyStr
+from typing import Dict
+from typing import NoReturn
+from typing import Tuple
 
 
 class TransformerModule(Modules):
@@ -40,13 +44,13 @@ class TransformerModule(Modules):
             dict_path=dict_path, model=model, encoder=encoder, decoder=decoder
         )
 
-    def _save_model(self, **kwargs) -> None:
+    def _save_model(self, **kwargs) -> NoReturn:
         self.encoder.save(filepath=kwargs["encoder_save_path"])
         self.decoder.save(filepath=kwargs["decoder_save_path"])
         print("模型已保存为SaveModel格式")
 
     @tf.function(autograph=True)
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> Dict:
         """训练步
 
         :param batch_dataset: 训练步的当前batch数据
@@ -71,7 +75,7 @@ class TransformerModule(Modules):
         return {"train_loss": self.loss_metric.result(), "train_accuracy": self.accuracy_metric.result()}
 
     def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
+                    progress_bar: ProgressBar, *args, **kwargs) -> Dict:
         """ 验证步
 
         :param dataset: 验证步的dataset
@@ -94,7 +98,7 @@ class TransformerModule(Modules):
         return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
 
     @tf.function(autograph=True)
-    def _valid_one_step(self, inputs: tf.Tensor, targets: tf.Tensor) -> dict:
+    def _valid_one_step(self, inputs: tf.Tensor, targets: tf.Tensor) -> Dict:
         """ 单个验证步
 
         :param inputs: batch输入
@@ -113,7 +117,7 @@ class TransformerModule(Modules):
 
         return {"valid_loss": self.loss_metric.result(), "valid_accuracy": self.accuracy_metric.result()}
 
-    def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> str:
+    def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> AnyStr:
         """ 对话推断模块
 
         :param request: 输入句子
@@ -154,7 +158,7 @@ class TransformerModule(Modules):
         return result
 
     @tf.function(autograph=True, experimental_relax_shapes=True)
-    def _inference_one_step(self, dec_input: tf.Tensor, enc_output: tf.Tensor, padding_mask: tf.Tensor):
+    def _inference_one_step(self, dec_input: tf.Tensor, enc_output: tf.Tensor, padding_mask: tf.Tensor) -> Tuple:
         """ 单个推断步
 
         :param dec_input: decoder输入

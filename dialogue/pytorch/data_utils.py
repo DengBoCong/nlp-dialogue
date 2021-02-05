@@ -7,6 +7,9 @@ from torch.utils.data import Dataset, DataLoader
 from torchnlp.encoders.text import pad_tensor, stack_and_pad_tensors, StaticTokenizerEncoder
 
 
+
+
+
 def preprocess_sentence(start_sign, end_sign, sentence):
     """
     用于给句子首尾添加start和end
@@ -69,57 +72,6 @@ def read_tokenized_data(path, start_sign, end_sign, num_examples):
                 diag_weight.append(float(temp[1]))
 
     return zip(*word_pairs), diag_weight
-
-
-def load_data(dict_fn, data_fn, batch_size, start_sign, end_sign, checkpoint_dir, max_length, max_train_data_size=0):
-    """
-    数据加载方法，主要将分词好的数据进行整理，过程中保存字典文件，方便后续其他功能
-    使用，方法返回处理好的dataset，steps_per_epoch，checkpoint_prefix
-    Args:
-        dict_fn: 将训练数据的字典保存，用于以后使用，路径
-        data_fn: 分词好的训练数据路径
-        batch_size: batch大小
-        start_sign: 开始标记
-        end_sign: 结束标记
-        checkpoint_dir: 检查点保存路径
-        max_length: 最大句子长度
-        max_train_data_size: 最大训练数据大小
-    Returns:
-        dataset: PyTorch的DataLoader
-        steps_per_epoch: 每轮的步数
-        checkpoint_prefix: 保存检查点的前缀
-    """
-    print("训练数据读取中...")
-    (input_lang, target_lang), diag_weight = read_tokenized_data(data_fn, start_sign, end_sign, max_train_data_size)
-    diag_weight = torch.tensor(diag_weight, dtype=torch.float32)
-    # 合并input，target用于生成统一的字典
-    lang = np.hstack((input_lang, target_lang))
-    print("读取完成，正在格式化训练数据...")
-    tokenizer = StaticTokenizerEncoder(sample=lang, tokenize=lambda x: x.split())
-    # 将文本序列转换文token id之后，并进行填充
-    input_data = [pad_tensor(tensor=tokenizer.encode(example)[:max_length], length=max_length, padding_index=0) for
-                  example in input_lang]
-    target_data = [pad_tensor(tensor=tokenizer.encode(example)[:max_length], length=max_length, padding_index=0) for
-                   example in target_lang]
-    input_tensor = stack_and_pad_tensors(input_data)[0]
-    target_tensor = stack_and_pad_tensors(target_data)[0]
-
-    print("格式化完成，正在整理训练数据并保存字典")
-    word_index = {}
-    vocab_list = tokenizer.vocab
-    for i in range(tokenizer.vocab_size):
-        word_index[vocab_list[i]] = i
-        word_index[i] = vocab_list[i]
-
-    with open(dict_fn, 'w', encoding='utf-8') as file:
-        file.write(json.dumps(word_index, indent=4, ensure_ascii=False))
-    print("数据字典保存完成！")
-
-    dataset = PairDataset(input_tensor, target_tensor, diag_weight)
-    loader = DataLoader(dataset=dataset, batch_size=batch_size, shuffle=True, num_workers=2)
-    steps_per_epoch = len(input_tensor) // batch_size
-
-    return loader, steps_per_epoch
 
 
 def load_token_dict(dict_fn):

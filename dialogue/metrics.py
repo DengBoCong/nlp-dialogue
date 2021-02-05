@@ -19,9 +19,10 @@ from __future__ import division
 from __future__ import print_function
 
 import numpy as np
+from typing import List
 
 
-def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: float = 1.0) -> list:
+def recall_at_position_k_in_n(labels: list, k: list = [1], n: int = 10, tar: float = 1.0) -> List:
     """ Rn@k 召回率指标计算
 
     :param labels: 数据列表

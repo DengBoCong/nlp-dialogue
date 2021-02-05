@@ -21,10 +21,11 @@ from __future__ import print_function
 import os
 import pysolr
 import tensorflow as tf
+from typing import NoReturn
 
 
 def create_search_data(data_path: str, solr_server: str, max_database_size: int,
-                       vocab_size: int, dict_path: str, unk_sign: str = "<unk>") -> None:
+                       vocab_size: int, dict_path: str, unk_sign: str = "<unk>") -> NoReturn:
     """ 生成轮次tf-idf为索引的候选回复
 
     :param data_path: 文本数据路径

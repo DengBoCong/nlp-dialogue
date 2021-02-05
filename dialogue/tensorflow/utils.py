@@ -18,13 +18,13 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-import os
-import jieba
 import tensorflow as tf
 from sklearn.feature_extraction.text import TfidfVectorizer
+from typing import Tuple
+from typing import List
 
 
-def combine_mask(seq: tf.Tensor):
+def combine_mask(seq: tf.Tensor) -> Tuple:
     """对input中的不能见单位进行mask
 
     :param seq: 输入序列
@@ -36,7 +36,7 @@ def combine_mask(seq: tf.Tensor):
     return tf.maximum(look_ahead_mask, padding_mask)
 
 
-def create_padding_mask(seq: tf.Tensor) -> tf.Tensor:
+def create_padding_mask(seq: tf.Tensor) -> Tuple:
     """ 用于创建输入序列的扩充部分的mask
 
     :param seq: 输入序列
@@ -46,7 +46,7 @@ def create_padding_mask(seq: tf.Tensor) -> tf.Tensor:
     return seq[:, tf.newaxis, tf.newaxis, :]  # (batch_size, 1, 1, seq_len)
 
 
-def _create_look_ahead_mask(seq: tf.Tensor) -> tf.Tensor:
+def _create_look_ahead_mask(seq: tf.Tensor) -> Tuple:
     """ 用于创建当前点以后位置部分的mask
 
     :param seq: 输入序列
@@ -88,44 +88,7 @@ def load_checkpoint(checkpoint_dir: str, execute_type: str, checkpoint_save_size
     return checkpoint_manager
 
 
-def load_tokenizer(dict_path: str) -> tf.keras.preprocessing.text.Tokenizer:
-    """ 通过字典加载tokenizer
-
-    :param dict_path: 字典路径
-    :return tokenizer: 分词器
-    """
-    if not os.path.exists(dict_path):
-        print("字典不存在，请检查之后重试")
-        exit(0)
-
-    with open(dict_path, "r", encoding="utf-8") as dict_file:
-        json_string = dict_file.read().strip().strip("\n")
-        tokenizer = tf.keras.preprocessing.text.tokenizer_from_json(json_string)
-
-    return tokenizer
-
-
-def preprocess_request(sentence: str, max_length: int, tokenizer: tf.keras.preprocessing.text.Tokenizer,
-                       start_sign: str = "<start>", end_sign: str = "<end>") -> tf.Tensor:
-    """ 用于处理回复功能的输入句子，返回模型使用的序列
-
-    :param sentence: 待处理句子
-    :param max_length: 单个句子最大长度
-    :param tokenizer: 分词器
-    :param start_sign: 句子开始标记
-    :param end_sign: 句子结束标记
-    :return: 处理好的句子和decoder输入
-    """
-    sentence = " ".join(jieba.cut(sentence))
-    sentence = start_sign + " " + sentence + " " + end_sign
-
-    inputs = tokenizer.texts_to_sequences([sentence])
-    inputs = tf.keras.preprocessing.sequence.pad_sequences(inputs, maxlen=max_length, padding="post")
-
-    return inputs
-
-
-def get_tf_idf_top_k(history: list, k: int = 5):
+def get_tf_idf_top_k(history: list, k: int = 5) -> List:
     """ 使用tf_idf算法计算权重最高的k个词，并返回
 
     :param history: 上下文语句

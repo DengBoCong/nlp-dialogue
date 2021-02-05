@@ -24,6 +24,7 @@ import tensorflow as tf
 from dialogue.tensorflow.seq2seq.modules import Seq2SeqModule
 from dialogue.tensorflow.smn.modules import SMNModule
 from dialogue.tensorflow.transformer.modules import TransformerModule
+from typing import Tuple
 
 
 def load_transformer(config_path: str) -> TransformerModule:
@@ -80,7 +81,7 @@ def load_smn(config_path: str) -> SMNModule:
     return modules
 
 
-def check_and_read_path(config_path: str) -> tuple:
+def check_and_read_path(config_path: str) -> Tuple:
     """ 检查配置文件路径及读取配置文件内容及当前工作目录
 
     :param config_path:

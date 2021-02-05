@@ -20,20 +20,15 @@ from __future__ import print_function
 
 import abc
 import time
-import tensorflow as tf
-from dialogue.tensorflow.load_dataset import load_data
+import torch
 from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
-from typing import AnyStr
-from typing import Dict
-from typing import NoReturn
 
 
 class Modules(abc.ABC):
-    def __init__(self, loss_metric: tf.keras.metrics.Mean, accuracy_metric: tf.keras.metrics.SparseCategoricalAccuracy,
-                 batch_size: int, buffer_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
+    def __init__(self, batch_size: int, buffer_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
                  dict_path: str = "", model: tf.keras.Model = None, encoder: tf.keras.Model = None,
-                 decoder: tf.keras.Model = None) -> NoReturn:
+                 decoder: tf.keras.Model = None) -> None:
         """model以及(encoder，decoder)两类模型传其中一种即可，具体在各自继承之后的训练步中使用
         Note:
             a): 模型训练指标中，损失器和精度器必传，保证至少返回到当前batch为止的平均训练损失和训练精度
@@ -64,7 +59,7 @@ class Modules(abc.ABC):
         self.decoder = decoder
 
     @abc.abstractmethod
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> Dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
         """该方法用于定于训练步中，模型实际训练的核心代码（在train方法中使用）
 
         Note:
@@ -76,7 +71,7 @@ class Modules(abc.ABC):
 
     @abc.abstractmethod
     def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, *args, **kwargs) -> Dict:
+                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
         """ 该方法用于定义验证模型逻辑
 
         Note:
@@ -87,7 +82,7 @@ class Modules(abc.ABC):
         raise NotImplementedError("Must be implemented in subclasses.")
 
     @abc.abstractmethod
-    def _save_model(self, **kwargs) -> NoReturn:
+    def _save_model(self, **kwargs) -> None:
         """ 将模型保存为SaveModel格式
 
         Note:
@@ -98,7 +93,7 @@ class Modules(abc.ABC):
 
     def train(self, optimizer: tf.optimizers.Adam, checkpoint: tf.train.CheckpointManager, train_data_path: str,
               epochs: int, checkpoint_save_freq: int, valid_data_split: float = 0.0, max_train_data_size: int = 0,
-              valid_data_path: str = "", max_valid_data_size: int = 0, history: dict = {}, **kwargs) -> Dict:
+              valid_data_path: str = "", max_valid_data_size: int = 0, history: dict = {}, **kwargs) -> dict:
         """ 训练模块
 
         :param optimizer: 优化器
@@ -158,7 +153,7 @@ class Modules(abc.ABC):
         self._save_model(**kwargs)
         return history
 
-    def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> NoReturn:
+    def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> None:
         """ 验证模块
 
         :param valid_data_path: 验证数据文本路径
@@ -179,7 +174,7 @@ class Modules(abc.ABC):
         print("验证结束")
 
     @abc.abstractmethod
-    def inference(self, *args, **kwargs) -> AnyStr:
+    def inference(self, *args, **kwargs) -> str:
         """ 对话推断模块
         """
 

@@ -22,16 +22,17 @@ import os
 import json
 import tensorflow as tf
 from argparse import ArgumentParser
+from typing import NoReturn
 import dialogue.tensorflow.seq2seq.model as seq2seq
 from dialogue.preprocess_corpus import preprocess_dataset
 from dialogue.preprocess_corpus import to_single_turn_dataset
 from dialogue.tensorflow.seq2seq.modules import Seq2SeqModule
 from dialogue.tensorflow.utils import load_checkpoint
-from dialogue.tensorflow.utils import load_tokenizer
+from dialogue.tools import load_tokenizer
 from dialogue.tools import show_history
 
 
-def tf_seq2seq() -> None:
+def tf_seq2seq() -> NoReturn:
     parser = ArgumentParser(description="seq2seq chatbot")
     parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
     parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")
