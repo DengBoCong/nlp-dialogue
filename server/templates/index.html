@@ -36,10 +36,6 @@
                         <a-icon type="apartment"></a-icon>
                         Seq2Seq
                     </a-menu-item>
-                    <!--                    <a-menu-item key="4">-->
-                    <!--                        <a-icon type="cluster"></a-icon>-->
-                    <!--                        Task-->
-                    <!--                    </a-menu-item>-->
                 </a-menu>
             </a-layout-header>
             <a-layout-content style="padding: 0 50px;">
@@ -207,7 +203,7 @@
         mounted() {
             this.infoHeight = document.body.clientHeight - 240 + "px";
             this.commentHeight = document.body.clientHeight - 340 + "px";
-            this.screenHeight = document.body.clientHeight + "px";
+            this.screenHeight = document.body.clientHeight - 185 + "px";
             axios({
                 method: 'get',
                 url: '/transformer'
