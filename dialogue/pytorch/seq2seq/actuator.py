@@ -20,13 +20,18 @@ from __future__ import print_function
 
 import os
 import json
+import torch
 from argparse import ArgumentParser
 from dialogue.tools import show_history
 from dialogue.preprocess_corpus import preprocess_dataset
 from dialogue.preprocess_corpus import to_single_turn_dataset
+import dialogue.pytorch.seq2seq.model as seq2seq
+from dialogue.pytorch.utils import load_checkpoint
+from dialogue.pytorch.seq2seq.modules import Seq2SeqModules
+from typing import NoReturn
 
 
-def torch_seq2seq() -> None:
+def torch_seq2seq() -> NoReturn:
     parser = ArgumentParser(description="seq2seq chatbot")
     parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
     parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")
@@ -34,17 +39,20 @@ def torch_seq2seq() -> None:
     parser.add_argument("--act", default="pre_treat", type=str, required=False, help="执行类型")
     parser.add_argument("--cell_type", default="lstm", type=str, required=False, help="rnn的cell类型")
     parser.add_argument("--if_bidirectional", default=True, type=bool, required=False, help="是否开启双向rnn")
-    parser.add_argument("--units", default=1024, type=int, required=False, help="隐藏层单元数")
+    parser.add_argument("--enc_units", default=1024, type=int, required=False, help="encoder隐藏层单元数")
+    parser.add_argument("--dec_units", default=1024, type=int, required=False, help="decoder隐藏层单元数")
     parser.add_argument("--vocab_size", default=1000, type=int, required=False, help="词汇大小")
+    parser.add_argument("--dropout", default=0.1, type=float, required=False, help="采样率")
     parser.add_argument("--embedding_dim", default=256, type=int, required=False, help="嵌入层维度大小")
     parser.add_argument("--encoder_layers", default=2, type=int, required=False, help="encoder的层数")
     parser.add_argument("--decoder_layers", default=2, type=int, required=False, help="decoder的层数")
     parser.add_argument("--max_train_data_size", default=0, type=int, required=False, help="用于训练的最大数据大小")
     parser.add_argument("--max_valid_data_size", default=0, type=int, required=False, help="用于验证的最大数据大小")
     parser.add_argument("--max_sentence", default=40, type=int, required=False, help="单个序列的最大长度")
+    parser.add_argument("--num_workers", default=2, type=int, required=False, help="数据加载器工作线程数量")
     parser.add_argument("--dict_path", default="data\\pytorch\\seq2seq_dict.json",
                         type=str, required=False, help="字典路径")
-    parser.add_argument("--checkpoint_dir", default="checkpoints\\pytorch\\seq2seq",
+    parser.add_argument("--checkpoint_dir", default="checkpoints\\pytorch\\seq2seq\\",
                         type=str, required=False, help="检查点路径")
     parser.add_argument("--resource_data_path", default="data\\LCCC.json", type=str, required=False, help="原始数据集路径")
     parser.add_argument("--tokenized_data_path", default="data\\pytorch\\lccc_tokenized.txt",
@@ -81,28 +89,31 @@ def torch_seq2seq() -> None:
     file_path = os.path.abspath(__file__)
     work_path = file_path[:file_path.find("pytorch")]
 
-    # encoder = seq2seq.encoder(
-    #     vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], num_layers=options["encoder_layers"],
-    #     enc_units=options["units"] // 2, cell_type=options["cell_type"], if_bidirectional=options["if_bidirectional"]
-    # )
-    # decoder = seq2seq.decoder(
-    #     vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], dec_units=options["units"],
-    #     enc_units=options["units"], num_layers=options["decoder_layers"], cell_type=options["cell_type"]
-    # )
-    #
-    # loss_metric = tf.keras.metrics.Mean(name="loss_metric")
-    # accuracy_metric = tf.keras.metrics.SparseCategoricalAccuracy(name="accuracy_metric")
-    # optimizer = tf.optimizers.Adam(name="optimizer")
-    # checkpoint_manager = load_checkpoint(
-    #     checkpoint_dir=work_path + options["checkpoint_dir"], execute_type=execute_type,
-    #     encoder=encoder, decoder=decoder, checkpoint_save_size=options["checkpoint_save_size"]
-    # )
-    #
-    # modules = Seq2SeqModule(
-    #     loss_metric=loss_metric, accuracy_metric=accuracy_metric, batch_size=options["batch_size"],
-    #     buffer_size=options["buffer_size"], max_sentence=options["max_sentence"], train_data_type="read_single_data",
-    #     valid_data_type="read_single_data", dict_path=work_path + options["dict_path"], encoder=encoder, decoder=decoder
-    # )
+    encoder = seq2seq.Encoder(
+        vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], enc_units=options["enc_units"],
+        num_layers=options["encoder_layers"], dropout=options["dropout"], cell_type=options["cell_type"],
+        if_bidirectional=options["if_bidirectional"]
+    )
+    decoder = seq2seq.Decoder(
+        vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], enc_units=options["enc_units"],
+        dec_units=options["dec_units"], num_layers=options["decoder_layers"], dropout=options["dropout"],
+        cell_type=options["cell_type"], if_bidirectional=options["if_bidirectional"]
+    )
+
+    optimizer = torch.optim.Adam([{"params": encoder.parameters(), "lr": 1e-3},
+                                  {"params": decoder.parameters(), "lr": 1e-3}])
+
+    _, encoder, decoder, optimizer = load_checkpoint(
+        checkpoint_dir=work_path + options["checkpoint_dir"], encoder=encoder,
+        execute_type=execute_type, optimizer=optimizer, decoder=decoder
+    )
+
+    modules = Seq2SeqModules(
+        batch_size=options["batch_size"], max_sentence=options["max_sentence"], train_data_type="read_single_data",
+        valid_data_type="read_single_data", dict_path=work_path + options["dict_path"],
+        num_workers=options["num_workers"],
+        encoder=encoder, decoder=decoder
+    )
 
     if execute_type == "pre_treat":
         preprocess_dataset(dataset_name="lccc", raw_data_path=work_path + options["resource_data_path"],

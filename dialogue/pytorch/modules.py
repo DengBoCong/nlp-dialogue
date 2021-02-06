@@ -30,6 +30,7 @@ from dialogue.tools import ProgressBar
 from typing import AnyStr
 from typing import Dict
 from typing import NoReturn
+from typing import Tuple
 
 
 class Modules(abc.ABC):
@@ -62,7 +63,8 @@ class Modules(abc.ABC):
         self.decoder = decoder
 
     @abc.abstractmethod
-    def _train_step(self, batch_dataset: tuple, optimizer: Optimizer, *args, **kwargs) -> Dict:
+    def _train_step(self, batch_dataset: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
+                    optimizer: Optimizer, *args, **kwargs) -> Dict:
         """该方法用于定于训练步中，模型实际训练的核心代码（在train方法中使用）
 
         Note:

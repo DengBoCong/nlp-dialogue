@@ -21,6 +21,7 @@ from __future__ import print_function
 import torch
 import torch.nn as nn
 from typing import Tuple
+from dialogue.pytorch.layers import BahdanauAttention
 
 
 class Encoder(nn.Module):
@@ -72,17 +73,16 @@ class Decoder(nn.Module):
     :param dec_units: decoder单元大小
     :param num_layers: encoder中内部RNN层数
     :param dropout: 采样率
-    :param attention: 用于计算attention
     :param cell_type: cell类型，lstm/gru， 默认lstm
     :param if_bidirectional: 是否双向
     :return: Seq2Seq的Encoder
     """
 
     def __init__(self, vocab_size: int, embedding_dim: int, enc_units: int, dec_units: int, num_layers: int,
-                 dropout: float, attention: nn.Module, cell_type: str = "lstm", if_bidirectional: bool = True) -> None:
+                 dropout: float, cell_type: str = "lstm", if_bidirectional: bool = True) -> None:
         super(Decoder, self).__init__()
         self.vocab_size = vocab_size
-        self.attention = attention
+        self.attention = BahdanauAttention(enc_units=enc_units, dec_units=dec_units)
         self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
         if cell_type == "lstm":
             self.rnn = nn.LSTM(input_size=enc_units * 2 + embedding_dim, hidden_size=dec_units,

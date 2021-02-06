@@ -54,9 +54,14 @@ def save_checkpoint(checkpoint_dir: str, optimizer: torch.optim.Optimizer = None
         model_dict["decoder_state_dict"] = decoder.state_dict()
     model_dict["optimizer_state_dict"] = optimizer.state_dict()
 
-    torch.save(model_dict, checkpoint_path + "-{}.pth".format(version))
+    model_checkpoint_path = "checkpoint-{}.pth".format(version)
+    torch.save(model_dict, checkpoint_dir + model_checkpoint_path)
     with open(checkpoint_path, "w", encoding="utf-8") as file:
-        file.write(json.dumps({"version": version, "last_preserved_timestamp": time.time()}))
+        file.write(json.dumps({
+            "version": version,
+            "model_checkpoint_path": model_checkpoint_path,
+            "last_preserved_timestamp": time.time()
+        }))
 
 
 def load_checkpoint(checkpoint_dir: str, execute_type: str, optimizer: torch.optim.Optimizer = None,
@@ -77,6 +82,8 @@ def load_checkpoint(checkpoint_dir: str, execute_type: str, optimizer: torch.opt
     if not os.path.exists(checkpoint_path) and execute_type != "train" and execute_type != "pre_treat":
         print("没有检查点，请先执行train模式")
         exit(0)
+    elif not os.path.exists(checkpoint_path):
+        return model, encoder, decoder, optimizer
 
     with open(checkpoint_path, "r", encoding="utf-8") as file:
         json_string = file.read().strip().strip("\n")
