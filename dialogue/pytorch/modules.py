@@ -21,45 +21,48 @@ from __future__ import print_function
 import abc
 import time
 import torch
+from torch.utils.data import DataLoader
+from torch.optim import Optimizer
+from dialogue.pytorch.load_dataset import load_data
+from dialogue.pytorch.utils import save_checkpoint
 from dialogue.tools import get_dict_string
 from dialogue.tools import ProgressBar
+from typing import AnyStr
+from typing import Dict
+from typing import NoReturn
 
 
 class Modules(abc.ABC):
-    def __init__(self, batch_size: int, buffer_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
-                 dict_path: str = "", model: tf.keras.Model = None, encoder: tf.keras.Model = None,
-                 decoder: tf.keras.Model = None) -> None:
+    def __init__(self, batch_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
+                 dict_path: str = "", num_workers: int = 2, model: torch.nn.Module = None,
+                 encoder: torch.nn.Module = None, decoder: torch.nn.Module = None) -> NoReturn:
         """model以及(encoder，decoder)两类模型传其中一种即可，具体在各自继承之后的训练步中使用
         Note:
-            a): 模型训练指标中，损失器和精度器必传，保证至少返回到当前batch为止的平均训练损失和训练精度
+            a): 模型训练指标中，保证至少返回到当前batch为止的平均训练损失
 
-        :param loss_metric: 损失计算器
-        :param accuracy_metric: 精度计算器
         :param batch_size: Dataset加载批大小
-        :param buffer_size: Dataset加载缓存大小
         :param max_sentence: 最大句子长度
         :param train_data_type: 读取训练数据类型，单轮/多轮...
         :param valid_data_type: 读取验证数据类型，单轮/多轮...
         :param dict_path: 字典路径，若使用phoneme则不用传
+        :param num_workers: 数据加载器的工作线程
         :param model: 模型
         :param encoder: encoder模型
         :param decoder: decoder模型
         :return: 返回历史指标数据
         """
-        self.loss_metric = loss_metric
-        self.accuracy_metric = accuracy_metric
         self.batch_size = batch_size
-        self.buffer_size = buffer_size
         self.max_sentence = max_sentence
         self.train_data_type = train_data_type
         self.valid_data_type = valid_data_type
         self.dict_path = dict_path
+        self.num_workers = num_workers
         self.model = model
         self.encoder = encoder
         self.decoder = decoder
 
     @abc.abstractmethod
-    def _train_step(self, batch_dataset: tuple, optimizer: tf.optimizers.Adam, *args, **kwargs) -> dict:
+    def _train_step(self, batch_dataset: tuple, optimizer: Optimizer, *args, **kwargs) -> Dict:
         """该方法用于定于训练步中，模型实际训练的核心代码（在train方法中使用）
 
         Note:
@@ -70,37 +73,27 @@ class Modules(abc.ABC):
         raise NotImplementedError("Must be implemented in subclasses.")
 
     @abc.abstractmethod
-    def _valid_step(self, dataset: tf.data.Dataset, steps_per_epoch: int,
-                    progress_bar: ProgressBar, *args, **kwargs) -> dict:
+    def _valid_step(self, loader: DataLoader, steps_per_epoch: int,
+                    progress_bar: ProgressBar, *args, **kwargs) -> Dict:
         """ 该方法用于定义验证模型逻辑
 
         Note:
             a): 返回所得指标字典
-            b): dataset为模型验证必需
+            b): DataLoader为模型验证必需
         """
 
         raise NotImplementedError("Must be implemented in subclasses.")
 
-    @abc.abstractmethod
-    def _save_model(self, **kwargs) -> None:
-        """ 将模型保存为SaveModel格式
-
-        Note:
-            如果不在train之后保存SaveModel，子类继承实现这个方法时，直接pass即可
-        """
-
-        raise NotImplementedError("Must be implemented in subclasses.")
-
-    def train(self, optimizer: tf.optimizers.Adam, checkpoint: tf.train.CheckpointManager, train_data_path: str,
-              epochs: int, checkpoint_save_freq: int, valid_data_split: float = 0.0, max_train_data_size: int = 0,
-              valid_data_path: str = "", max_valid_data_size: int = 0, history: dict = {}, **kwargs) -> dict:
+    def train(self, optimizer: torch.optim.Optimizer, train_data_path: str, epochs: int, checkpoint_save_freq: int,
+              checkpoint_dir: str = "", valid_data_split: float = 0.0, max_train_data_size: int = 0,
+              valid_data_path: str = "", max_valid_data_size: int = 0, history: dict = {}, **kwargs) -> Dict:
         """ 训练模块
 
         :param optimizer: 优化器
-        :param checkpoint: 检查点管理器
         :param train_data_path: 文本数据路径
         :param epochs: 训练周期
         :param checkpoint_save_freq: 检查点保存频率
+        :param checkpoint_dir: 检查点保存目录路径
         :param valid_data_split: 用于从训练数据中划分验证数据
         :param max_train_data_size: 最大训练数据量
         :param valid_data_path: 验证数据文本路径
@@ -108,26 +101,23 @@ class Modules(abc.ABC):
         :param history: 用于保存训练过程中的历史指标数据
         :return: 返回历史指标数据
         """
-        print("训练开始，正在准备数据中")
-        train_dataset, valid_dataset, train_steps_per_epoch, valid_steps_per_epoch = load_data(
-            dict_path=self.dict_path, train_data_path=train_data_path, buffer_size=self.buffer_size,
-            batch_size=self.batch_size, max_sentence=self.max_sentence, valid_data_split=valid_data_split,
-            valid_data_path=valid_data_path, max_train_data_size=max_train_data_size,
-            valid_data_type=self.valid_data_type, max_valid_data_size=max_valid_data_size,
-            train_data_type=self.train_data_type, **kwargs
+        print('训练开始，正在准备数据中...')
+        train_loader, valid_loader, train_steps_per_epoch, valid_steps_per_epoch = load_data(
+            dict_path=self.dict_path, batch_size=self.batch_size, train_data_type=self.train_data_type,
+            valid_data_type=self.valid_data_type, max_sentence=self.max_sentence, valid_data_split=valid_data_split,
+            train_data_path=train_data_path, valid_data_path=valid_data_path, max_train_data_size=max_train_data_size,
+            max_valid_data_size=max_valid_data_size, num_workers=self.num_workers, **kwargs
         )
 
         progress_bar = ProgressBar()
 
         for epoch in range(epochs):
             print("Epoch {}/{}".format(epoch + 1, epochs))
-
             start_time = time.time()
-            self.loss_metric.reset_states()
-            self.accuracy_metric.reset_states()
+
             progress_bar.reset(total=train_steps_per_epoch, num=self.batch_size)
 
-            for (batch, batch_dataset) in enumerate(train_dataset.take(train_steps_per_epoch)):
+            for (batch, batch_dataset) in enumerate(train_loader):
                 train_metrics = self._train_step(batch_dataset=batch_dataset, optimizer=optimizer, **kwargs)
 
                 progress_bar(current=batch + 1, metrics=get_dict_string(data=train_metrics))
@@ -138,22 +128,22 @@ class Modules(abc.ABC):
                 history[key].append(value)
 
             if (epoch + 1) % checkpoint_save_freq == 0:
-                checkpoint.save()
+                save_checkpoint(checkpoint_dir=checkpoint_dir, optimizer=optimizer,
+                                model=self.model, encoder=self.encoder, decoder=self.decoder)
 
-                if valid_steps_per_epoch == 0 or valid_dataset is None:
+                if valid_steps_per_epoch == 0 or valid_loader is None:
                     print("验证数据量过小，小于batch_size，已跳过验证轮次")
                 else:
-                    valid_metrics = self._valid_step(dataset=valid_dataset, progress_bar=progress_bar,
+                    valid_metrics = self._valid_step(loader=valid_loader, progress_bar=progress_bar,
                                                      steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
                     for key, value in valid_metrics.items():
                         history[key].append(value)
 
         print("训练结束")
-        self._save_model(**kwargs)
         return history
 
-    def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> None:
+    def evaluate(self, valid_data_path: str = "", max_valid_data_size: int = 0, **kwargs) -> NoReturn:
         """ 验证模块
 
         :param valid_data_path: 验证数据文本路径
@@ -161,20 +151,20 @@ class Modules(abc.ABC):
         :return: 返回历史指标数据
         """
         print("验证开始，正在准备数据中")
-        _, valid_dataset, _, valid_steps_per_epoch = load_data(
-            dict_path=self.dict_path, valid_data_path=valid_data_path, valid_data_type=self.valid_data_type,
-            buffer_size=self.buffer_size, train_data_type=self.train_data_type, batch_size=self.batch_size,
-            max_sentence=self.max_sentence, max_valid_data_size=max_valid_data_size, **kwargs
+        _, valid_loader, _, valid_steps_per_epoch = load_data(
+            dict_path=self.dict_path, batch_size=self.batch_size, train_data_type=self.train_data_type,
+            valid_data_type=self.valid_data_type, max_sentence=self.max_sentence, valid_data_path=valid_data_path,
+            max_valid_data_size=max_valid_data_size, num_workers=self.num_workers, **kwargs
         )
 
         progress_bar = ProgressBar()
-        _ = self._valid_step(dataset=valid_dataset, progress_bar=progress_bar,
+        _ = self._valid_step(loader=valid_loader, progress_bar=progress_bar,
                              steps_per_epoch=valid_steps_per_epoch, **kwargs)
 
         print("验证结束")
 
     @abc.abstractmethod
-    def inference(self, *args, **kwargs) -> str:
+    def inference(self, *args, **kwargs) -> AnyStr:
         """ 对话推断模块
         """
 

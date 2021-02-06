@@ -95,14 +95,16 @@ def load_data(dict_path: str, batch_size: int, train_data_type: str, valid_data_
 
     if train_flag:
         train_dataset = PairDataset(train_first, train_second, train_third)
-        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
+        train_loader = DataLoader(dataset=train_dataset, batch_size=batch_size,
+                                  shuffle=True, drop_last=True, num_workers=num_workers)
         train_steps_per_epoch = len(train_first) // batch_size
     else:
         train_loader = None
 
     if valid_flag:
         valid_dataset = PairDataset(valid_first, valid_second, valid_third)
-        valid_loader = DataLoader(dataset=valid_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
+        valid_loader = DataLoader(dataset=valid_dataset, batch_size=batch_size,
+                                  shuffle=False, drop_last=True, num_workers=num_workers)
         valid_steps_per_epoch = len(valid_first) // batch_size
     else:
         valid_loader = None
