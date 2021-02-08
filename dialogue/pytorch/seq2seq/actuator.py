@@ -88,17 +88,18 @@ def torch_seq2seq() -> NoReturn:
     # 注意了有关路径的参数，以pytorch目录下为基准配置
     file_path = os.path.abspath(__file__)
     work_path = file_path[:file_path.find("pytorch")]
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     encoder = seq2seq.Encoder(
         vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], enc_units=options["enc_units"],
         num_layers=options["encoder_layers"], dropout=options["dropout"], cell_type=options["cell_type"],
         if_bidirectional=options["if_bidirectional"]
-    )
+    ).to(device)
     decoder = seq2seq.Decoder(
         vocab_size=options["vocab_size"], embedding_dim=options["embedding_dim"], enc_units=options["enc_units"],
         dec_units=options["dec_units"], num_layers=options["decoder_layers"], dropout=options["dropout"],
         cell_type=options["cell_type"], if_bidirectional=options["if_bidirectional"]
-    )
+    ).to(device)
 
     optimizer = torch.optim.Adam([{"params": encoder.parameters(), "lr": 1e-3},
                                   {"params": decoder.parameters(), "lr": 1e-3}])
@@ -124,20 +125,15 @@ def torch_seq2seq() -> NoReturn:
                                max_data_size=options["max_train_data_size"], vocab_size=options["vocab_size"],
                                qa_data_path=work_path + options["preprocess_data_path"])
     elif execute_type == "train":
-        print("")
-        # history = {"train_accuracy": [], "train_loss": [], "valid_accuracy": [], "valid_loss": []}
-        # tokenizer = load_tokenizer(dict_path=work_path + options["dict_path"])
-        # history = modules.train(
-        #     optimizer=optimizer, epochs=options["epochs"], checkpoint=checkpoint_manager, history=history,
-        #     train_data_path=work_path + options["preprocess_data_path"], valid_data_path="",
-        #     checkpoint_save_freq=options["checkpoint_save_freq"], max_valid_data_size=options["max_valid_data_size"],
-        #     max_train_data_size=options["max_train_data_size"], valid_data_split=options["valid_data_split"],
-        #     start_sign=tokenizer.word_index.get(options["start_sign"]),
-        #     encoder_save_path=work_path + options["encoder_save_path"],
-        #     decoder_save_path=work_path + options["decoder_save_path"]
-        # )
-        # show_history(history=history, valid_freq=options["checkpoint_save_freq"],
-        #              save_dir=work_path + options["history_image_dir"])
+        history = {"train_accuracy": [], "train_loss": [], "valid_accuracy": [], "valid_loss": []}
+        history = modules.train(
+            optimizer=optimizer, train_data_path=work_path + options["preprocess_data_path"], epochs=options["epochs"],
+            checkpoint_save_freq=options["checkpoint_save_freq"], checkpoint_dir=work_path + options["checkpoint_dir"],
+            valid_data_split=options["valid_data_split"], max_train_data_size=options["max_train_data_size"],
+            valid_data_path="", max_valid_data_size=options["max_valid_data_size"], history=history
+        )
+        show_history(history=history, valid_freq=options["checkpoint_save_freq"],
+                     save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
         print("")
         # tokenizer = load_tokenizer(dict_path=work_path + options["dict_path"])

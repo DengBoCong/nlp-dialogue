@@ -41,7 +41,6 @@ class Encoder(nn.Module):
         """
         super(Encoder, self).__init__()
         self.embedding = nn.Embedding(num_embeddings=vocab_size, embedding_dim=embedding_dim)
-        self.rnn = list()
 
         if cell_type == "lstm":
             self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=enc_units,
@@ -60,6 +59,9 @@ class Encoder(nn.Module):
         dropout = self.dropout(inputs)
         outputs, state = self.rnn(dropout)
         # 这里使用了双向GRU，所以这里将两个方向的特征层合并起来，维度将会是units * 2
+        print(outputs.size())
+        print(state)
+        exit(0)
         state = torch.cat((state[-2, :, :], state[-1, :, :]), dim=1)
         return outputs, state
 

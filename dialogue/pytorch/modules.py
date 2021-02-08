@@ -36,7 +36,8 @@ from typing import Tuple
 class Modules(abc.ABC):
     def __init__(self, batch_size: int, max_sentence: int, train_data_type: str, valid_data_type: str,
                  dict_path: str = "", num_workers: int = 2, model: torch.nn.Module = None,
-                 encoder: torch.nn.Module = None, decoder: torch.nn.Module = None) -> NoReturn:
+                 encoder: torch.nn.Module = None, decoder: torch.nn.Module = None,
+                 device: torch.device = None) -> NoReturn:
         """model以及(encoder，decoder)两类模型传其中一种即可，具体在各自继承之后的训练步中使用
         Note:
             a): 模型训练指标中，保证至少返回到当前batch为止的平均训练损失
@@ -50,6 +51,7 @@ class Modules(abc.ABC):
         :param model: 模型
         :param encoder: encoder模型
         :param decoder: decoder模型
+        :param device: 指定运行设备
         :return: 返回历史指标数据
         """
         self.batch_size = batch_size
@@ -61,6 +63,7 @@ class Modules(abc.ABC):
         self.model = model
         self.encoder = encoder
         self.decoder = decoder
+        self.device = device
 
     @abc.abstractmethod
     def _train_step(self, batch_dataset: Tuple[torch.Tensor, torch.Tensor, torch.Tensor],
