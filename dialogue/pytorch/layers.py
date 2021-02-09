@@ -43,7 +43,7 @@ class BahdanauAttention(nn.Module):
         :param values: encoder输出状态
         """
         values = values.permute(1, 0, 2)
-        hidden_with_time_axis = torch.unsqueeze(input=query, dim=1).repeat(1, values.shape[1])
+        hidden_with_time_axis = torch.unsqueeze(input=query, dim=1)
         score = self.V(torch.tanh(self.W1(values) + self.W2(hidden_with_time_axis)))
 
         attention_weights = F.softmax(input=score, dim=1)

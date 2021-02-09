@@ -50,6 +50,7 @@ def torch_seq2seq() -> NoReturn:
     parser.add_argument("--max_valid_data_size", default=0, type=int, required=False, help="用于验证的最大数据大小")
     parser.add_argument("--max_sentence", default=40, type=int, required=False, help="单个序列的最大长度")
     parser.add_argument("--num_workers", default=2, type=int, required=False, help="数据加载器工作线程数量")
+    parser.add_argument("--teacher_forcing_ratio", default=0.5, type=float, required=False, help="teacher forcing阀值")
     parser.add_argument("--dict_path", default="data\\pytorch\\seq2seq_dict.json",
                         type=str, required=False, help="字典路径")
     parser.add_argument("--checkpoint_dir", default="checkpoints\\pytorch\\seq2seq\\",
@@ -130,7 +131,8 @@ def torch_seq2seq() -> NoReturn:
             optimizer=optimizer, train_data_path=work_path + options["preprocess_data_path"], epochs=options["epochs"],
             checkpoint_save_freq=options["checkpoint_save_freq"], checkpoint_dir=work_path + options["checkpoint_dir"],
             valid_data_split=options["valid_data_split"], max_train_data_size=options["max_train_data_size"],
-            valid_data_path="", max_valid_data_size=options["max_valid_data_size"], history=history
+            valid_data_path="", max_valid_data_size=options["max_valid_data_size"], history=history,
+            vocab_size=options["vocab_size"], teacher_forcing_ratio=options["teacher_forcing_ratio"]
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])

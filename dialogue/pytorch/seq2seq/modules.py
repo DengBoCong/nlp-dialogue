@@ -20,6 +20,7 @@ from __future__ import print_function
 
 import time
 import torch
+import torch.nn.functional as F
 import random
 from dialogue.pytorch.modules import Modules
 from dialogue.tools import ProgressBar
@@ -50,29 +51,27 @@ class Seq2SeqModules(Modules):
         :param optimizer: 优化器
         :return: 返回所得指标字典
         """
-        loss = 0.
-        inputs, targets, weights = batch_dataset[0].to(torch.long), \
-                                   batch_dataset[1].to(torch.long), batch_dataset[2].to(torch.long)
+        inputs, targets, weights = \
+            batch_dataset[0].to(torch.long), batch_dataset[1].to(torch.long), batch_dataset[2].to(torch.long)
         inputs = inputs.permute(1, 0)
         targets = targets.permute(1, 0)
 
         optimizer.zero_grad()
         enc_outputs, enc_state = self.encoder(inputs)
-        print(enc_outputs.size())
-        print(enc_state.size())
-        exit(0)
         dec_state = enc_state
-        dec_input = targets[0, :]
+        dec_input = targets[:1, :]
         outputs = torch.zeros(self.max_sentence, self.batch_size, kwargs["vocab_size"])
         for t in range(1, self.max_sentence):
             predictions, dec_hidden = self.decoder(dec_input, dec_state, enc_outputs)
             outputs[t] = predictions
+
             teacher_force = random.random() < kwargs["teacher_forcing_ratio"]
             top_first = torch.argmax(predictions, dim=-1)
-            dec_input = (targets[t] if teacher_force else top_first)
+            dec_input = (targets[t:t + 1] if teacher_force else top_first)
 
-        outputs = torch.reshape(outputs[1:], shape=[-1, outputs.shape[-1]])
-        targets = torch.reshape(targets[1:], shape=[-1])
+        outputs = torch.reshape(input=outputs[1:], shape=[-1, outputs.shape[-1]])
+        targets = torch.reshape(input=targets[1:], shape=[-1])
+
         loss = torch.nn.CrossEntropyLoss(ignore_index=0)(outputs, targets)
         loss.backward()
         optimizer.step()
@@ -99,7 +98,7 @@ class Seq2SeqModules(Modules):
 
             enc_outputs, enc_state = self.encoder(inputs)
             dec_state = enc_state
-            dec_input = targets[0, :]
+            dec_input = targets[:1, :]
             outputs = torch.zeros(self.max_sentence, self.batch_size, kwargs["vocab_size"])
             for t in range(1, self.max_sentence):
                 predictions, dec_hidden = self.decoder(dec_input, dec_state, enc_outputs)

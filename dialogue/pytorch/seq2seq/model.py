@@ -57,11 +57,8 @@ class Encoder(nn.Module):
         """
         inputs = self.embedding(inputs)
         dropout = self.dropout(inputs)
-        outputs, state = self.rnn(dropout)
+        outputs, (state, _) = self.rnn(dropout)
         # 这里使用了双向GRU，所以这里将两个方向的特征层合并起来，维度将会是units * 2
-        print(outputs.size())
-        print(state)
-        exit(0)
         state = torch.cat((state[-2, :, :], state[-1, :, :]), dim=1)
         return outputs, state
 
@@ -107,9 +104,7 @@ class Decoder(nn.Module):
         context_vector, attention_weights = self.attention(hidden, enc_output)
 
         rnn_input = torch.cat((embedding, torch.unsqueeze(context_vector, dim=0)), dim=-1)
-        rnn_output, dec_state = self.rnn(rnn_input, hidden.unsqueeze(dim=0))
-        embedding = embedding.squeeze(dim=0)
-        rnn_output = rnn_output.squeeze(dim=0)
-        output = self.fc(torch.cat((embedding, context_vector, rnn_output), dim=-1))
+        rnn_output, (dec_state, _) = self.rnn(rnn_input)
+        output = self.fc(torch.cat((embedding, context_vector.unsqueeze(dim=0), rnn_output), dim=-1))
 
         return output, dec_state.squeeze(0)
