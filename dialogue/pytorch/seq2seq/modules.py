@@ -21,11 +21,14 @@ from __future__ import print_function
 import time
 import torch
 import torch.nn.functional as F
+import torch.utils.data as data
 import random
+from dialogue.pytorch.beamsearch import BeamSearch
 from dialogue.pytorch.modules import Modules
+from dialogue.tools import load_tokenizer
+from dialogue.tools import preprocess_request
 from dialogue.tools import ProgressBar
 from torch.optim import Optimizer
-from torch.utils.data import DataLoader
 from typing import AnyStr
 from typing import Dict
 from typing import NoReturn
@@ -78,7 +81,7 @@ class Seq2SeqModules(Modules):
 
         return {"train_loss": loss}
 
-    def _valid_step(self, loader: DataLoader, steps_per_epoch: int,
+    def _valid_step(self, loader: data.DataLoader, steps_per_epoch: int,
                     progress_bar: ProgressBar, *args, **kwargs) -> Dict:
         """ 验证模块
 
@@ -92,30 +95,73 @@ class Seq2SeqModules(Modules):
         start_time = time.time()
         progress_bar = ProgressBar(total=steps_per_epoch, num=self.batch_size)
 
-        for (batch, (inputs, targets, _)) in enumerate(loader):
-            inputs = inputs.permute(1, 0)
-            targets = targets.permute(1, 0)
+        with torch.no_grad():
+            for (batch, (inputs, targets, _)) in enumerate(loader):
+                inputs, targets = inputs.to(torch.long), targets.to(torch.long)
+                inputs, targets = inputs.permute(1, 0), targets.permute(1, 0)
+                inputs, targets = inputs.to(kwargs["device"]), targets.to(kwargs["device"])
 
-            enc_outputs, enc_state = self.encoder(inputs)
-            dec_state = enc_state
-            dec_input = targets[:1, :]
-            outputs = torch.zeros(self.max_sentence, self.batch_size, kwargs["vocab_size"])
-            for t in range(1, self.max_sentence):
-                predictions, dec_hidden = self.decoder(dec_input, dec_state, enc_outputs)
-                outputs[t] = predictions
-                dec_input = torch.argmax(predictions, dim=-1)
+                enc_outputs, enc_state = self.encoder(inputs)
+                dec_state = enc_state
+                dec_input = targets[:1, :]
+                outputs = torch.zeros(self.max_sentence, self.batch_size, kwargs["vocab_size"]).to(kwargs["device"])
+                for t in range(1, self.max_sentence):
+                    predictions, dec_hidden = self.decoder(dec_input, dec_state, enc_outputs)
+                    outputs[t] = predictions
+                    dec_input = torch.argmax(predictions, dim=-1)
 
-            outputs = torch.reshape(outputs[1:], shape=[-1, outputs.shape[-1]])
-            targets = torch.reshape(targets[1:], shape=[-1])
-            loss = torch.nn.CrossEntropyLoss(ignore_index=0)(outputs, targets)
-            total_loss += loss
+                outputs = torch.reshape(input=outputs[1:], shape=[-1, outputs.shape[-1]])
+                targets = torch.reshape(input=targets[1:], shape=[-1])
+                loss = torch.nn.CrossEntropyLoss(ignore_index=0)(outputs, targets)
+                total_loss += loss
 
-            progress_bar(current=batch + 1, metrics="- train_loss: {:.4f}"
-                         .format(loss))
+                progress_bar(current=batch + 1, metrics="- valid_loss: {:.4f}".format(loss))
 
         progress_bar.done(step_time=time.time() - start_time)
 
         return {"valid_loss": total_loss / steps_per_epoch}
 
-    def inference(self, *args, **kwargs) -> AnyStr:
-        return None
+    def inference(self, request: str, beam_size: int, start_sign: str = "<start>", end_sign: str = "<end>") -> AnyStr:
+        """ 对话推断模块
+
+        :param request: 输入句子
+        :param beam_size: beam大小
+        :param start_sign: 句子开始标记
+        :param end_sign: 句子结束标记
+        :return: 返回历史指标数据
+        """
+        with torch.no_grad():
+            tokenizer = load_tokenizer(self.dict_path)
+            enc_input = preprocess_request(sentence=request, tokenizer=tokenizer,
+                                           max_length=self.max_sentence, start_sign=start_sign, end_sign=end_sign)
+            enc_input = torch.tensor(data=enc_input, dtype=torch.long).permute(1, 0)
+            enc_output, states = self.encoder(inputs=enc_input)
+            dec_input = torch.tensor(data=[[tokenizer.word_index.get(start_sign)]])
+
+            beam_search_container = BeamSearch(beam_size=beam_size, max_length=self.max_sentence, worst_score=0)
+            beam_search_container.reset(enc_output=enc_output.permute(1, 0, 2), dec_input=dec_input, remain=states)
+            enc_output, dec_input, states = beam_search_container.get_search_inputs()
+            enc_output = enc_output.permute(1, 0, 2)
+
+            for t in range(self.max_sentence):
+                predictions, dec_hidden = self.decoder(dec_input, states, enc_output)
+                predictions = F.softmax(input=predictions, dim=-1)
+
+                beam_search_container.expand(predictions=predictions[0], end_sign=tokenizer.word_index.get(end_sign))
+                if beam_search_container.beam_size == 0:
+                    break
+
+                enc_output, dec_input, states = beam_search_container.get_search_inputs()
+                dec_input = dec_input[:, -1].unsqueeze(-1)
+                enc_output = enc_output.permute(1, 0, 2)
+                dec_input = dec_input.permute(1, 0)
+
+            beam_search_result = beam_search_container.get_result(top_k=3)
+            result = ""
+            # 从容器中抽取序列，生成最终结果
+            for i in range(len(beam_search_result)):
+                temp = beam_search_result[i].numpy()
+                text = tokenizer.sequences_to_texts(temp)
+                text[0] = text[0].replace(start_sign, "").replace(end_sign, "").replace(" ", "")
+                result = "<" + text[0] + ">" + result
+            return result

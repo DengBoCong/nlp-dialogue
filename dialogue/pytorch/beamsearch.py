@@ -1,110 +1,168 @@
-class BeamSearch(object):
-    """
-    BeamSearch使用说明：
-    1.首先需要将问句编码成token向量并对齐，然后调用init_input方法进行初始化
-    2.对模型要求能够进行批量输入
-    3.BeamSearch使用实例已经集成到Chatter中，如果不进行自定义调用，
-    可以将聊天器继承Chatter，在满足上述两点的基础之上设计_create_predictions方法，并调用BeamSearch
-    """
+# Copyright 2021 DengBoCong. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+# ==============================================================================
+"""BeamSearch组件
+"""
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
 
-    def __init__(self, beam_size, max_length, worst_score):
+import copy
+import torch
+from typing import List
+from typing import NoReturn
+from typing import Tuple
+
+
+class BeamSearch(object):
+
+    def __init__(self, beam_size, max_length, worst_score) -> NoReturn:
         """
-        初始化BeamSearch的序列容器
+        :param beam_size: beam大小
+        :param max_length: 句子最大长度
+        :param worst_score: 最差分数
         """
-        self.remain_beam_size = beam_size  # 保存原始beam大小，用于重置
-        self.max_length = max_length - 1
-        self.remain_worst_score = worst_score  # 保留原始worst_score，用于重置
+        self.BEAM_SIZE = beam_size  # 保存原始beam大小，用于重置
+        self.MAX_LEN = max_length - 1
+        self.MIN_SCORE = worst_score  # 保留原始worst_score，用于重置
+
+        self.candidates = []  # 保存中间状态序列的容器，元素格式为(score, sequence)类型为(float, [])
+        self.result = []  # 用来保存已经遇到结束符的序列
+        self.result_plus = []  # 用来保存已经遇到结束符的带概率分布的序列
+        self.candidates_plus = []  # 保存已经遇到结束符的序列及概率分布
+
+        self.enc_output = None
+        self.remain = None
+        self.dec_inputs = None
+        self.beam_size = None
+        self.worst_score = None
 
     def __len__(self):
+        """当前候选结果数
         """
-        已存在BeamSearch的序列容器的大小
-        """
-        return len(self.container)
+        return len(self.candidates)
 
-    def init_all_inner_variables(self, inputs, dec_input):
+    def reset(self, enc_output: torch.Tensor, dec_input: torch.Tensor, remain: torch.Tensor) -> NoReturn:
+        """重置搜索
+
+        :param enc_output: 已经序列化的输入句子
+        :param dec_input: 解码器输入序列
+        :param remain: 预留decoder输入
+        :return: 无返回值
         """
-        用来初始化输入
-        Args:
-            inputs: encoder的输入
-            dec_input: decoder的输入
-        Returns:
-        """
-        self.container = []  # 保存中间状态序列的容器，元素格式为(score, sequence)类型为(float, [])
-        self.container.append((1, dec_input))
-        self.inputs = inputs
+        self.candidates = []  # 保存中间状态序列的容器，元素格式为(score, sequence)类型为(float, [])
+        self.candidates_plus = []  # 保存已经遇到结束符的序列及概率分布,元素为(score, tensor),tensor的shape为(seq_len, vocab_size)
+        self.candidates.append((1, dec_input))
+        self.enc_output = enc_output
+        self.remain = remain
         self.dec_inputs = dec_input
-        self.beam_size = self.remain_beam_size  # 新一轮中，将beam_size重置为原beam大小
-        self.worst_score = self.remain_worst_score  # 新一轮中，worst_score重置
+        self.beam_size = self.BEAM_SIZE  # 新一轮中，将beam_size重置为原beam大小
+        self.worst_score = self.MIN_SCORE  # 新一轮中，worst_score重置
         self.result = []  # 用来保存已经遇到结束符的序列
+        self.result_plus = []  # 用来保存已经遇到结束符的带概率分布的序列元素为tensor, tensor的shape为(seq_len, vocab_size)
 
-    def expand_beam_size_inputs(self):
-        """
-        用来动态的更新模型的inputs和dec_inputs，以适配随着Beam Search
-        结果的得出而变化的beam_size
-        Args:
-        Returns: 返回扩展至beam_size大小的enc_inputs和dec_inputs
+    def get_search_inputs(self) -> Tuple:
+        """为下一步预测生成输入
+
+        :return: enc_output, dec_inputs, remain
         """
         # 生成多beam输入
-        inputs = self.inputs
-        for i in range(len(self) - 1):
-            inputs = torch.cat((inputs, self.inputs), dim=0)
-        requests = inputs
-        # 生成多beam的decoder的输入
-        temp = self.container[0][1]
+        enc_output = self.enc_output
+        remain = self.remain
+        self.dec_inputs = self.candidates[0][1]
         for i in range(1, len(self)):
-            temp = torch.cat((temp, self.container[i][1]), dim=0)
-        self.dec_inputs = copy.deepcopy(temp)
-        return requests, self.dec_inputs
+            enc_output = torch.cat((enc_output, self.enc_output), dim=0)
+            remain = torch.cat((remain, self.remain), dim=0)
+            self.dec_inputs = torch.cat((self.dec_inputs, self.candidates[i][1]), dim=0)
 
-    def _reduce_end(self, end_sign):
+        return enc_output, self.dec_inputs, remain
+
+    def _reduce_end(self, end_sign: str) -> NoReturn:
+        """ 当序列遇到了结束token，需要将该序列从容器中移除
+
+        :param end_sign: 句子结束标记
+        :return: 无返回值
         """
-        当序列遇到了结束token，需要将该序列从容器中移除
-        Args:
-            end_sign: 结束标记
-        Returns:
-        """
-        for idx, (s, dec) in enumerate(self.container):
+        for idx, (s, dec) in enumerate(self.candidates):
             temp = dec.numpy()
             if temp[0][-1] == end_sign:
-                self.result.append((self.container[idx][0], self.container[idx][1]))
-                del self.container[idx]
+                self.result.append(self.candidates[idx])
+                # self.result_plus.append(self.candidates_plus[idx])
+                del self.candidates[idx]
+                # del self.candidates_plus[idx]
                 self.beam_size -= 1
 
-    def add(self, predictions, end_sign):
-        """
+    def expand(self, predictions, end_sign) -> NoReturn:
+        """ 根据预测结果对候选进行扩展
         往容器中添加预测结果，在本方法中对预测结果进行整理、排序的操作
-        Args:
-            predictions: 传入每个时间步的模型预测值
-        Returns:
+
+        :param predictions: 传入每个时间步的模型预测值
+        :param end_sign: 句子结束标记
+        :return: 无返回值
         """
-        remain = copy.deepcopy(self.container)
-        self.container.clear()
-        predictions = predictions
-        for i in range(self.dec_inputs.shape[0]):
-            for _ in range(self.beam_size):
-                token_index = torch.argmax(input=predictions[i], dim=0)
-                # 计算分数
-                score = remain[i][0] * predictions[i][token_index]
+        prev_candidates = copy.deepcopy(self.candidates)
+        prev_candidates_plus = copy.deepcopy(self.candidates_plus)
+        self.candidates.clear()
+        self.candidates_plus.clear()
+        # predictions = predictions.numpy()
+        predictions_plus = copy.deepcopy(predictions)
+        # 在batch_size*beam_size个prediction中找到分值最高的beam_size个
+        for i in range(self.dec_inputs.shape[0]):  # 外循环遍历batch_size（batch_size的值其实就是之前选出的候选数量）
+            for _ in range(self.beam_size):  # 内循环遍历选出beam_size个概率最大位置
+                token_index = torch.argmax(input=predictions[i], dim=0)  # predictions.shape -> (batch_size, vocab_size)
+                score = prev_candidates[i][0] * predictions[i][token_index]  # 计算分数
                 predictions[i][token_index] = 0
                 # 判断容器容量以及分数比较
                 if len(self) < self.beam_size or score > self.worst_score:
-                    self.container.append(
-                        (score, torch.cat((remain[i][1], torch.reshape(token_index, shape=[1, -1])), dim=-1)))
+                    self.candidates.append(
+                        (score, torch.cat((prev_candidates[i][1], torch.reshape(token_index, shape=(1, 1))), dim=-1))
+                    )
+                    # if len(prev_candidates_plus) == 0:
+                    #     self.candidates_plus.append((score, predictions_plus))
+                    # else:
+                    #     self.candidates_plus.append(
+                    #         (score, torch.cat((prev_candidates_plus[i][1], [predictions_plus[i]]), dim=0))
+                    #     )
                     if len(self) > self.beam_size:
-                        sorted_scores = sorted([(s, idx) for idx, (s, _) in enumerate(self.container)])
-                        del self.container[sorted_scores[0][1]]
+                        sorted_scores = sorted([(s, idx) for idx, (s, _) in enumerate(self.candidates)])
+                        del self.candidates[sorted_scores[0][1]]
+                        # del self.candidates_plus[sorted_scores[0][1]]
                         self.worst_score = sorted_scores[1][0]
                     else:
                         self.worst_score = min(score, self.worst_score)
         self._reduce_end(end_sign=end_sign)
 
-    def get_result(self, top_k=1):
+    def get_result(self, top_k=1) -> List:
+        """获得概率最高的top_k个结果
+
+        :param top_k: 输出结果数量
+        :return: 概率最高的top_k个结果
         """
-        获取最终beam个序
-        Args:
-            top_k: 返回序列数量
-        Returns: beam个序列
-        """
+        if not self.result:
+            self.result = self.candidates
         results = [element[1] for element in sorted(self.result)[-top_k:]]
-        # 每轮回答之后，需要重置容器内部的相关变量值
         return results
+
+    def get_result_plus(self, top_k=1) -> List:
+        """获得概率最高的top_k个结果
+
+        :param top_k: 输出结果数量
+        :return: 概率最高的top_k个带概率的结果
+        """
+        sorted_scores = sorted([(s, idx) for idx, (s, _) in enumerate(self.result)], reverse=True)
+        results_plus = []
+        for i in range(top_k):
+            results_plus.append(self.result_plus[sorted_scores[i][1]][1])
+
+        return results_plus

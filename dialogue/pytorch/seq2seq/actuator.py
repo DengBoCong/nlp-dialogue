@@ -131,29 +131,24 @@ def torch_seq2seq() -> NoReturn:
             optimizer=optimizer, train_data_path=work_path + options["preprocess_data_path"], epochs=options["epochs"],
             checkpoint_save_freq=options["checkpoint_save_freq"], checkpoint_dir=work_path + options["checkpoint_dir"],
             valid_data_split=options["valid_data_split"], max_train_data_size=options["max_train_data_size"],
-            valid_data_path="", max_valid_data_size=options["max_valid_data_size"], history=history,
+            valid_data_path="", max_valid_data_size=options["max_valid_data_size"], history=history, device=device,
             vocab_size=options["vocab_size"], teacher_forcing_ratio=options["teacher_forcing_ratio"]
         )
         show_history(history=history, valid_freq=options["checkpoint_save_freq"],
                      save_dir=work_path + options["history_image_dir"])
     elif execute_type == "evaluate":
-        print("")
-        # tokenizer = load_tokenizer(dict_path=work_path + options["dict_path"])
-        # modules.evaluate(
-        #     max_valid_data_size=options["max_valid_data_size"], valid_data_path=work_path + options["valid_data_path"],
-        #     start_sign=tokenizer.word_index.get(options["start_sign"])
-        # )
+        modules.evaluate(max_valid_data_size=options["max_valid_data_size"], vocab_size=options["vocab_size"],
+                         valid_data_path=work_path + options["valid_data_path"], device=device)
     elif execute_type == "chat":
-        print("")
-        # print("Agent: 你好！结束聊天请输入ESC。")
-        # while True:
-        #     request = input("User: ")
-        #     if request == "ESC":
-        #         print("Agent: 再见！")
-        #         exit(0)
-        #     response = modules.inference(request=request, beam_size=options["beam_size"],
-        #                                  start_sign=options["start_sign"], end_sign=options["end_sign"])
-        #     print("Agent: ", response)
+        print("Agent: 你好！结束聊天请输入ESC。")
+        while True:
+            request = input("User: ")
+            if request == "ESC":
+                print("Agent: 再见！")
+                exit(0)
+            response = modules.inference(request=request, beam_size=options["beam_size"],
+                                         start_sign=options["start_sign"], end_sign=options["end_sign"])
+            print("Agent: ", response)
     else:
         parser.error(message="")
 

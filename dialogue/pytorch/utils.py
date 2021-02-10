@@ -86,8 +86,7 @@ def load_checkpoint(checkpoint_dir: str, execute_type: str, optimizer: torch.opt
         return model, encoder, decoder, optimizer
 
     with open(checkpoint_path, "r", encoding="utf-8") as file:
-        json_string = file.read().strip().strip("\n")
-        checkpoint_info = json.load(json_string)
+        checkpoint_info = json.load(file)
 
     model_checkpoint_path = checkpoint_dir + checkpoint_info["model_checkpoint_path"]
 

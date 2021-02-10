@@ -21,6 +21,7 @@ from __future__ import print_function
 from dialogue.read_data import read_data
 from dialogue.tools import load_tokenizer
 from typing import Tuple
+import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 
@@ -28,10 +29,11 @@ from torch.utils.data import Dataset
 class PairDataset(Dataset):
     """ 专门用于问答对形式的数据集构建的dataset，用于配合DataLoader使用 """
 
-    def __init__(self, inputs, target, diag_weight):
-        self.first_tensor = inputs
-        self.second_tensor = target
-        self.third_tensor = diag_weight
+    def __init__(self, first_tensor, second_tensor, third_tensor):
+        """ Dataset预留三个数据位置 """
+        self.first_tensor = first_tensor
+        self.second_tensor = second_tensor
+        self.third_tensor = third_tensor
 
     def __getitem__(self, item):
         return self.first_tensor[item], self.second_tensor[item], self.third_tensor[item]
