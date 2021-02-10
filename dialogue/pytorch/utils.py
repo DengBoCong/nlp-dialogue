@@ -26,6 +26,17 @@ from typing import NoReturn
 from typing import Tuple
 
 
+def generate_square_subsequent_mask(self, sz):
+    """ 序列mask
+
+    :param sz: mask大小
+    :return: mask
+    """
+    mask = (torch.triu(torch.ones(sz, sz)) == 1).transpose(0, 1)
+    mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+    return mask
+
+
 def save_checkpoint(checkpoint_dir: str, optimizer: torch.optim.Optimizer = None, model: torch.nn.Module = None,
                     encoder: torch.nn.Module = None, decoder: torch.nn.Module = None) -> NoReturn:
     """ 保存模型检查点
@@ -41,8 +52,7 @@ def save_checkpoint(checkpoint_dir: str, optimizer: torch.optim.Optimizer = None
     version = 1
     if os.path.exists(checkpoint_path):
         with open(checkpoint_path, "r", encoding="utf-8") as file:
-            json_string = file.read().strip().strip("\n")
-            info = json.load(json_string)
+            info = json.load(file)
             version = info["version"] + 1
 
     model_dict = {}

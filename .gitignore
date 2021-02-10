@@ -15,7 +15,6 @@ dialogue/checkpoints/
 dialogue/data/history/
 dialogue/debug.py
 debug.py
-actuator.py
 
 build/
 develop-eggs/
