@@ -17,6 +17,9 @@ dialogue/data/history/
 dialogue/data/preprocess/
 dialogue/data/pytorch/
 dialogue/debug.py
+dialogue/tensorflow/seq2seq/actuator.py
+dialogue/tensorflow/transformer/actuator.py
+dialogue/tensorflow/smn/actuator.py
 debug.py
 
 build/
