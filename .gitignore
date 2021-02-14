@@ -12,7 +12,10 @@ __pycache__/
 .idea/
 .gitignore
 dialogue/checkpoints/
+dialogue/models/
 dialogue/data/history/
+dialogue/data/preprocess/
+dialogue/data/pytorch/
 dialogue/debug.py
 debug.py
 
