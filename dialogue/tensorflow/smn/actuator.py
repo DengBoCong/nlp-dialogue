@@ -48,16 +48,16 @@ def tf_smn() -> NoReturn:
     parser.add_argument("--valid_data_split", default=0.0, type=float, required=False, help="从训练数据集中划分验证数据的比例")
     parser.add_argument("--learning_rate", default=0.001, type=float, required=False, help="学习率")
     parser.add_argument("--max_database_size", default=0, type=int, required=False, help="最大数据候选数量")
-    parser.add_argument("--dict_path", default="data\\preprocess\\smn_dict.json", type=str, required=False, help="字典路径")
-    parser.add_argument("--checkpoint_dir", default="checkpoints\\tensorflow\\smn", type=str, required=False,
+    parser.add_argument("--dict_path", default="data/preprocess/smn_dict.json", type=str, required=False, help="字典路径")
+    parser.add_argument("--checkpoint_dir", default="checkpoints/tensorflow/smn", type=str, required=False,
                         help="检查点路径")
-    parser.add_argument("--train_data_path", default="data\\ubuntu_train.txt", type=str, required=False,
+    parser.add_argument("--train_data_path", default="data/ubuntu_train.txt", type=str, required=False,
                         help="处理好的多轮分词训练数据集路径")
-    parser.add_argument("--valid_data_path", default="data\\ubuntu_valid.txt", type=str, required=False,
+    parser.add_argument("--valid_data_path", default="data/ubuntu_valid.txt", type=str, required=False,
                         help="处理好的多轮分词验证数据集路径")
     parser.add_argument("--solr_server", default="http://49.235.33.100:8983/solr/smn/", type=str, required=False,
                         help="solr服务地址")
-    parser.add_argument("--candidate_database", default="data\\preprocess\\candidate.json", type=str, required=False,
+    parser.add_argument("--candidate_database", default="data/preprocess/candidate.json", type=str, required=False,
                         help="候选回复数据库")
     parser.add_argument("--epochs", default=5, type=int, required=False, help="训练步数")
     parser.add_argument("--batch_size", default=64, type=int, required=False, help="batch大小")
@@ -65,7 +65,7 @@ def tf_smn() -> NoReturn:
     parser.add_argument("--start_sign", default="<start>", type=str, required=False, help="序列开始标记")
     parser.add_argument("--end_sign", default="<end>", type=str, required=False, help="序列结束标记")
     parser.add_argument("--unk_sign", default="<unk>", type=str, required=False, help="未登录词")
-    parser.add_argument("--model_save_path", default="models\\tensorflow\\smn", type=str,
+    parser.add_argument("--model_save_path", default="models/tensorflow/smn", type=str,
                         required=False, help="SaveModel格式保存路径")
 
     options = parser.parse_args().__dict__

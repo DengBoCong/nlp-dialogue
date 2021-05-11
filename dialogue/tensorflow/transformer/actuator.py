@@ -63,22 +63,22 @@ def tf_transformer() -> NoReturn:
     parser.add_argument("--start_sign", default="<start>", type=str, required=False, help="序列开始标记")
     parser.add_argument("--end_sign", default="<end>", type=str, required=False, help="序列结束标记")
     parser.add_argument("--unk_sign", default="<unk>", type=str, required=False, help="未登录词")
-    parser.add_argument("--dict_path", default="data\\preprocess\\transformer_dict.json", type=str, required=False,
+    parser.add_argument("--dict_path", default="data/preprocess/transformer_dict.json", type=str, required=False,
                         help="字典路径")
-    parser.add_argument("--checkpoint_dir", default="checkpoints\\tensorflow\\transformer", type=str, required=False,
+    parser.add_argument("--checkpoint_dir", default="checkpoints/tensorflow/transformer", type=str, required=False,
                         help="检查点路径")
-    parser.add_argument("--raw_data_path", default="data\\LCCC.json", type=str, required=False, help="原始数据集路径")
-    parser.add_argument("--tokenized_data_path", default="data\\preprocess\\lccc_tokenized.txt", type=str,
+    parser.add_argument("--raw_data_path", default="data/LCCC.json", type=str, required=False, help="原始数据集路径")
+    parser.add_argument("--tokenized_data_path", default="data/preprocess/lccc_tokenized.txt", type=str,
                         required=False, help="处理好的多轮分词数据集路径")
-    parser.add_argument("--preprocess_data_path", default="data\\preprocess\\single_tokenized.txt", type=str,
+    parser.add_argument("--preprocess_data_path", default="data/preprocess/single_tokenized.txt", type=str,
                         required=False, help="处理好的单轮分词训练用数据集路径")
-    parser.add_argument("--valid_data_path", default="data\\preprocess\\single_tokenized.txt", type=str,
+    parser.add_argument("--valid_data_path", default="data/preprocess/single_tokenized.txt", type=str,
                         required=False, help="处理好的单轮分词验证评估用数据集路径")
-    parser.add_argument("--history_image_dir", default="data\\history\\transformer\\", type=str, required=False,
+    parser.add_argument("--history_image_dir", default="data/history/transformer/", type=str, required=False,
                         help="数据指标图表保存路径")
-    parser.add_argument("--encoder_save_path", default="models\\tensorflow\\transformer\\encoder", type=str,
+    parser.add_argument("--encoder_save_path", default="models/tensorflow/transformer/encoder", type=str,
                         required=False, help="Encoder的SaveModel格式保存路径")
-    parser.add_argument("--decoder_save_path", default="models\\tensorflow\\transformer\\decoder", type=str,
+    parser.add_argument("--decoder_save_path", default="models/tensorflow/transformer/decoder", type=str,
                         required=False, help="Decoder的SaveModel格式保存路径")
 
     options = parser.parse_args().__dict__
