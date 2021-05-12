@@ -37,10 +37,10 @@ def main() -> None:
             "seq2seq": lambda: tf_seq2seq(),
             "smn": lambda: tf_smn(),
         },
-        "torch": {
-            "transformer": lambda: None,
-            "seq2seq": lambda: torch_seq2seq(),
-        }
+        # "torch": {
+        #     "transformer": lambda: None,
+        #     "seq2seq": lambda: torch_seq2seq(),
+        # }
     }
 
     options = parser.parse_args(sys.argv[1:5])
