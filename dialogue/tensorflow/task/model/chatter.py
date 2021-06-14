@@ -5,7 +5,7 @@ import jieba
 import tensorflow as tf
 from pathlib import Path
 import common.data_utils as _data
-import config.get_config as _config
+import configs.get_config as _config
 from utils.beamsearch import BeamSearch
 
 

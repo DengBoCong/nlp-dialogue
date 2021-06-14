@@ -391,7 +391,7 @@
                 !hasOwnProp(childConfig, prop) &&
                 isObject(parentConfig[prop])
             ) {
-                // make sure changes to properties don't modify parent config
+                // make sure changes to properties don't modify parent configs
                 res[prop] = extend({}, res[prop]);
             }
         }
@@ -2021,7 +2021,7 @@
         meridiemParse: defaultLocaleMeridiemParse,
     };
 
-    // internal storage for locale config files
+    // internal storage for locale configs files
     var locales = {},
         localeFamilies = {},
         globalLocale;
@@ -2136,9 +2136,9 @@
             if (locales[name] != null) {
                 deprecateSimple(
                     'defineLocaleOverride',
-                    'use moment.updateLocale(localeName, config) to change ' +
+                    'use moment.updateLocale(localeName, configs) to change ' +
                         'an existing locale. moment.defineLocale(localeName, ' +
-                        'config) should only be used for creating a new locale ' +
+                        'configs) should only be used for creating a new locale ' +
                         'See http://momentjs.com/guides/#/warnings/define-locale/ for more info.'
                 );
                 parentConfig = locales[name]._config;
@@ -2212,7 +2212,7 @@
             // backwards compat for now: also set the locale
             getSetGlobalLocale(name);
         } else {
-            // pass null for config to unupdate, useful for tests
+            // pass null for configs to unupdate, useful for tests
             if (locales[name] != null) {
                 if (locales[name].parentLocale != null) {
                     locales[name] = locales[name].parentLocale;
@@ -2673,7 +2673,7 @@
 
             // TODO: We need to take the current isoWeekYear, but that depends on
             // how we interpret now (local, utc, fixed offset). So create
-            // a now version of current config (take local/utc/offset flags, and
+            // a now version of current configs (take local/utc/offset flags, and
             // create now).
             weekYear = defaults(
                 w.GG,

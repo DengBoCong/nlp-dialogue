@@ -8,7 +8,7 @@ from pathlib import Path
 from common.kb import load_kb
 from collections import defaultdict
 from nltk import wordpunct_tokenize
-import config.get_config as _config
+import configs.get_config as _config
 from nltk.tokenize import RegexpTokenizer
 
 

@@ -45,7 +45,7 @@ def log_operator(level: str, log_file: str = None,
     """
     if log_file is None:
         log_file = os.path.abspath(__file__)[
-                   :os.path.abspath(__file__).rfind("\\dialogue\\")] + "\\dialogue\\data\\preprocess\\runtime.log"
+                   :os.path.abspath(__file__).rfind("\\dialogue\\")] + "\\dialogue\\data\\preprocess\\runtime.logs"
 
     logger = logging.getLogger()
     logger.setLevel(level)
@@ -431,7 +431,7 @@ class Tokenizer(object):
         config = self.get_config()
         tokenizer_config = {
             'class_name': self.__class__.__name__,
-            'config': config
+            'configs': config
         }
         return json.dumps(tokenizer_config, **kwargs)
 
@@ -443,7 +443,7 @@ def tokenizer_from_json(json_string) -> Tokenizer:
     :return: 分词器
     """
     tokenizer_config = json.loads(json_string)
-    config = tokenizer_config.get('config')
+    config = tokenizer_config.get('configs')
 
     word_counts = json.loads(config.pop('word_counts'))
     word_docs = json.loads(config.pop('word_docs'))

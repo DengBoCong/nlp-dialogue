@@ -1,0 +1,8 @@
+docker*
+docs
+.git*
+**/*.pyc
+**/__pycache__
+!docker/configs
+data/
+examples/

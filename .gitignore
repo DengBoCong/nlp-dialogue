@@ -10,17 +10,17 @@ __pycache__/
 .Python
 #data/
 .idea/
-.gitignore
 dialogue/checkpoints/
 dialogue/models/
-dialogue/data/history/
-dialogue/data/preprocess/
-dialogue/data/pytorch/
+data/history/
+data/preprocess/
+data/pytorch/
 dialogue/debug.py
 dialogue/tensorflow/seq2seq/actuator.py
 dialogue/tensorflow/transformer/actuator.py
 dialogue/tensorflow/smn/actuator.py
 debug.py
+*.DS_Store
 
 build/
 develop-eggs/
