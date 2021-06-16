@@ -12,22 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-""" 抽象配置类及个模型默认配置类
+""" 全局通用常量
 """
 
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
-
-common = {}
-
-transformer = {}
-
-class Config(object):
-    def __str__(self):
-        print()
-
-    __repr__ = __str__
-
-    def __getitem__(self, item):
-        return a + b

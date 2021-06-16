@@ -27,18 +27,10 @@ from dialogue.tensorflow.transformer.actuator import tf_transformer
 
 
 def main() -> None:
-    parser = ArgumentParser(description="总执行器", usage="前两个参数必须为 --version VERSION --model MODEL")
-    parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
-    parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")
-
-    models = {
-        "tf": {
-            "transformer": lambda: tf_transformer(),
-            "seq2seq": lambda: tf_seq2seq(),
-            "smn": lambda: tf_smn(),
-        }
-    }
-
+    parser = ArgumentParser(description="总执行器", usage="第一个参数必须为 --pipeline PIPELINE")
+    parser.add_argument("--pipeline", default="chain", type=str, required=True, help="执行模式，end2end/chain/module")
+    print(sys.argv)
+    exit(0)
     options = parser.parse_args(sys.argv[1:5])
     if options.version not in ["tf", "torch"] or options.model not in ["transformer", "seq2seq", "smn"]:
         print("actuator.py: error: VERSION: [tf/torch] MODEL: [transformer/seq2seq/smn]")
