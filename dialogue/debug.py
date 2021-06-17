@@ -1,10 +1,4 @@
-import os
-import tempfile
 import tensorflow as tf
-from dialogue.tensorflow.transformer.model import encoder
-from dialogue.tensorflow.transformer.model import decoder
-from dialogue.tensorflow.utils import load_checkpoint
-from dialogue.tensorflow.transformer.modules import TransformerModule
 from dialogue.tensorflow.utils import load_tokenizer
 from dialogue.tensorflow.utils import preprocess_request
 from dialogue.tensorflow.beamsearch import BeamSearch

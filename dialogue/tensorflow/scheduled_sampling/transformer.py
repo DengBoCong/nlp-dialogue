@@ -19,8 +19,8 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from dialogue.tensorflow.transformer.model import decoder
-from dialogue.tensorflow.transformer.model import encoder
+from dialogue.tensorflow.nlu.model import decoder
+from dialogue.tensorflow.nlu.model import encoder
 from dialogue.tensorflow.utils import combine_mask
 from dialogue.tensorflow.utils import create_padding_mask
 

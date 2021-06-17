@@ -23,8 +23,8 @@ import json
 import torch
 from argparse import ArgumentParser
 from dialogue.tools import show_history
-from dialogue.preprocess_corpus import preprocess_dataset
-from dialogue.preprocess_corpus import to_single_turn_dataset
+from dialogue.tools.preprocess_corpus import preprocess_dataset
+from dialogue.tools.preprocess_corpus import to_single_turn_dataset
 import dialogue.pytorch.seq2seq.model as seq2seq
 from dialogue.pytorch.utils import load_checkpoint
 from dialogue.pytorch.seq2seq.modules import Seq2SeqModules

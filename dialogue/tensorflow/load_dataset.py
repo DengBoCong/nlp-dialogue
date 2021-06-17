@@ -19,7 +19,7 @@ from __future__ import division
 from __future__ import print_function
 
 import tensorflow as tf
-from dialogue.read_data import read_data
+from dialogue.tools.read_data import read_data
 from dialogue.tools import load_tokenizer
 from typing import Tuple
 

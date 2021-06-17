@@ -24,8 +24,8 @@ import tensorflow as tf
 from argparse import ArgumentParser
 from typing import NoReturn
 import dialogue.tensorflow.seq2seq.model as seq2seq
-from dialogue.preprocess_corpus import preprocess_dataset
-from dialogue.preprocess_corpus import to_single_turn_dataset
+from dialogue.tools.preprocess_corpus import preprocess_dataset
+from dialogue.tools.preprocess_corpus import to_single_turn_dataset
 from dialogue.tensorflow.seq2seq.modules import Seq2SeqModule
 from dialogue.tensorflow.utils import load_checkpoint
 from dialogue.tools import load_tokenizer

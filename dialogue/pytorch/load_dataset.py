@@ -18,10 +18,9 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from dialogue.read_data import read_data
+from dialogue.tools.read_data import read_data
 from dialogue.tools import load_tokenizer
 from typing import Tuple
-import torch
 from torch.utils.data import DataLoader
 from torch.utils.data import Dataset
 

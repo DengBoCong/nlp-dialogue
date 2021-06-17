@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""总执行器入口
+""" 总执行器入口
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -20,28 +20,23 @@ from __future__ import print_function
 
 import sys
 from argparse import ArgumentParser
-from dialogue.pytorch.seq2seq.actuator import torch_seq2seq
-from dialogue.tensorflow.seq2seq.actuator import tf_seq2seq
-from dialogue.tensorflow.smn.actuator import tf_smn
-from dialogue.tensorflow.transformer.actuator import tf_transformer
+
+def preprocess():
+    pass
+
+def train():
+    pass
+
+def valid():
+    pass
+
+def run():
+    pass
 
 
 def main() -> None:
-    parser = ArgumentParser(description="总执行器", usage="前两个参数必须为 --version VERSION --model MODEL")
-    parser.add_argument("--version", default="tf", type=str, required=True, help="执行版本")
-    parser.add_argument("--model", default="transformer", type=str, required=True, help="执行模型")
-
-    models = {
-        "tf": {
-            "transformer": lambda: tf_transformer(),
-            "seq2seq": lambda: tf_seq2seq(),
-            "smn": lambda: tf_smn(),
-        },
-        # "torch": {
-        #     "transformer": lambda: None,
-        #     "seq2seq": lambda: torch_seq2seq(),
-        # }
-    }
+    parser = ArgumentParser(description="总执行器", usage="第一个参数必须为 --pipeline PIPELINE")
+    parser.add_argument("--pipeline", default="chain", type=str, required=True, help="执行模式，preprocess/train/valid/run")
 
     options = parser.parse_args(sys.argv[1:5])
     if options.version not in ["tf", "torch"] or options.model not in ["transformer", "seq2seq", "smn"]:
