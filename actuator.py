@@ -21,28 +21,37 @@ from __future__ import print_function
 import sys
 from argparse import ArgumentParser
 
+pipelines = {
+    # "preprocess": pa
+}
+
 def preprocess():
     pass
+
 
 def train():
     pass
 
+
 def valid():
     pass
+
 
 def run():
     pass
 
 
 def main() -> None:
-    parser = ArgumentParser(description="总执行器", usage="第一个参数必须为 --pipeline PIPELINE")
-    parser.add_argument("--pipeline", default="chain", type=str, required=True, help="执行模式，preprocess/train/valid/run")
+    parser = ArgumentParser(description="total actuator", usage="the first parameter must be --pipeline PIPELINE")
+    parser.add_argument("--pipeline", default="chain", type=str, required=True,
+                        help="execution mode，preprocess/train/valid/run")
 
-    options = parser.parse_args(sys.argv[1:5])
-    if options.version not in ["tf", "torch"] or options.model not in ["transformer", "seq2seq", "smn"]:
-        print("actuator.py: error: VERSION: [tf/torch] MODEL: [transformer/seq2seq/smn]")
-        exit(0)
-    models[options.version][options.model]()
+    options = parser.parse_args().__dict__
+
+    if not options.get("pipeline"):
+        raise AttributeError("actuator.py: error: PIPELINE: [preprocess/train/valid/run]")
+
+
 
 
 if __name__ == "__main__":
