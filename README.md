@@ -5,6 +5,8 @@
 ![Stars Thanks](https://img.shields.io/badge/Stars-thanks-brightgreen.svg?style=social&logo=trustpilot)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=social&logo=appveyor)
 
+# 项目正在优化架构，可执行代码已经标记tag
+
 一个能够部署执行的全流程对话系统
 + TensorFlow模型
    + Transformer
