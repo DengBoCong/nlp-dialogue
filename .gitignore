@@ -21,6 +21,8 @@ dialogue/tensorflow/transformer/actuator.py
 dialogue/tensorflow/smn/actuator.py
 debug.py
 *.DS_Store
+development.txt
+logs/run/
 
 build/
 develop-eggs/
