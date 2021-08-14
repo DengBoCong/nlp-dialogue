@@ -1,9 +1,17 @@
-# NLP-Dialogue | Still Work
+<h1 align="center">NLP-Dialogue</h1>
+
+<div align="center">
 
 [![Blog](https://img.shields.io/badge/blog-@DengBoCong-blue.svg?style=social)](https://www.zhihu.com/people/dengbocong)
 [![Paper Support](https://img.shields.io/badge/paper-repo-blue.svg?style=social)](https://github.com/DengBoCong/nlp-paper)
 ![Stars Thanks](https://img.shields.io/badge/Stars-thanks-brightgreen.svg?style=social&logo=trustpilot)
 ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=social&logo=appveyor)
+
+[comment]: <> ([![PRs Welcome]&#40;https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square&#41;]&#40;&#41;)
+
+</div>
+
+<h3 align="center">[English](https://github.com/DengBoCong/nlp-dialogue) | [中文](https://github.com/DengBoCong/nlp-dialogue/blob/main/README.CN.md) </h3>
 
 # 项目正在优化架构，可执行代码已经标记tag
 

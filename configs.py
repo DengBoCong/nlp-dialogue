@@ -16,10 +16,12 @@ from flask import Flask
 from flask_caching import Cache
 from flask_login import LoginManager
 from flask_mail import Mail
+from flask_socketio import SocketIO
 from flask_sqlalchemy import SQLAlchemy
 
 mail = Mail()
 db = SQLAlchemy()
+socket_io = SocketIO()
 login_manager = LoginManager()
 login_manager.session_protection = "strong"
 login_manager.login_view = "views.login"
@@ -94,6 +96,7 @@ def create_app(config_name):
     mail.init_app(app=app)
     cache.init_app(app=app)
     login_manager.init_app(app=app)
+    socket_io.init_app(app=app)
 
     from app.view import views
     from dialogue.api import apis
