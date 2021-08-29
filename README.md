@@ -13,6 +13,16 @@
 
 <h3 align="center">[English](https://github.com/DengBoCong/nlp-dialogue) | [中文](https://github.com/DengBoCong/nlp-dialogue/blob/main/README.CN.md) </h3>
 
+# 架构
+开放域生成问答模型
+Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering
+
+检索
+Dense Passage Retrieval for Open-Domain Question Answering
+
+# 工具
+APScheduler
+
 # 项目正在优化架构，可执行代码已经标记tag
 
 一个能够部署执行的全流程对话系统
