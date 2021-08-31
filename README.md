@@ -11,7 +11,11 @@
 
 </div>
 
-<h3 align="center">[English](https://github.com/DengBoCong/nlp-dialogue) | [中文](https://github.com/DengBoCong/nlp-dialogue/blob/main/README.CN.md) </h3>
+<h3 align="center">
+
+[English](https://github.com/DengBoCong/nlp-dialogue) | [中文](https://github.com/DengBoCong/nlp-dialogue/blob/main/README.CN.md) 
+
+</h3>
 
 # 架构
 开放域生成问答模型

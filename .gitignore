@@ -10,11 +10,13 @@ __pycache__/
 .Python
 #data/
 .idea/
+db/data/history/
+db/data/preprocess/
+db/data/pytorch/
+temp/
+
 dialogue/checkpoints/
 dialogue/models/
-data/history/
-data/preprocess/
-data/pytorch/
 dialogue/debug.py
 dialogue/tensorflow/seq2seq/actuator.py
 dialogue/tensorflow/transformer/actuator.py
