@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" Project Server Entrance
+""" Project Server Config
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #
