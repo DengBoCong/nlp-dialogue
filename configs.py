@@ -31,16 +31,16 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    # Session相关
+    # session
     PERMANENT_SESSION_LIFETIME = timedelta(hours=3)
-    # 邮件相关
+    # mail
     MAIL_SERVER = os.environ.get("MAIL_SERVER")
     MAIL_PROT = 25
     MAIL_USE_TLS = True
     MAIL_USE_SSL = False
     MAIL_USERNAME = os.environ.get("MAIL_USERNAME")
     MAIL_PASSWORD = os.environ.get("MAIL_PASSWORD")
-    # 数据库相关
+    # db
     SQLALCHEMY_COMMIT_ON_TEARDOWN = True
     SQLALCHEMY_TRACK_MODIFICATIONS = True
     SQLALCHEMY_ECHO = True
@@ -99,7 +99,7 @@ def create_app(config_name):
     socket_io.init_app(app=app)
 
     from app.view import views
-    from dialogue.api import apis
+    from dialogue.pytorch.apis import apis
     app.register_blueprint(views)
     app.register_blueprint(apis)
 

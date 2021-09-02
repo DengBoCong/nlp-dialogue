@@ -15,7 +15,7 @@ from datetime import datetime
 
 class Collector(object):
     """ used for collect pipeline data, special training logs, inference
-        logs, evaluate logs, etc. And provide visual data and log views
+        logs, evaluate logs, etc. And provide visual data and log views.
     """
 
     def __init__(self, log_dir: str):
@@ -25,11 +25,23 @@ class Collector(object):
         if os.path.exists(self.collector_dir):
             os.makedirs(self.collector_dir)
 
-    def write_runtime_log(self, line: str):
-        """ write runtime log
+    def write_runtime_log(self, file_name: str, line: str):
+        """ write runtime log file
+        :param file_name: log write location file name
+        :param line: log description
         """
         with open(os.path.join(self.collector_dir, "runtime.logs"), 'a', encoding="utf-8") as file:
-            file.write(line)
+            file.write("INFO {} {} {}".format(datetime.now(), file_name, line))
+
+    def write_training_log(self, metrics: dict, if_batch_end: bool = False):
+        """ write training log file
+        """
+        pass
+
+    def write_evaluate_log(self, metrics: dict):
+        """ write evaluate log file
+        """
+        pass
 
         # if os.path.exists(os.path.join(log_dir, ))
 
