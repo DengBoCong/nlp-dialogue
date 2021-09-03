@@ -12,10 +12,10 @@ from __future__ import print_function
 from flask import Blueprint
 from flask_login import login_required
 
-torch_apis = Blueprint("apis", __name__, url_prefix="/apis/torch")
+apis = Blueprint("apis", __name__, url_prefix="/apis/torch")
 
 
-@torch_apis.route('test', methods=['GET', 'POST'])
+@apis.route('test', methods=['GET', 'POST'])
 @login_required
-def torch_test():
+def test():
     print("torch_test")

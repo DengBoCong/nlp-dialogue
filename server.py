@@ -20,26 +20,26 @@ from flask_script import Manager
 from flask_script import Shell
 from constant import DIALOGUE_APIS_MODULE
 
-app = create_app(config_name=os.environ.get("ENV") or "default")
+application = create_app(config_name=os.environ.get("ENV") or "default")
+module = importlib.import_module(DIALOGUE_APIS_MODULE.get(os.environ.get("DIALOGUE_MODULE") or "tf"))
+application.register_blueprint(module.apis)
 
-# TODO: register route; import_moudle
+migrate = Migrate(application, db)
+server = Manager(application)
 
-migrate = Migrate(app, db)
-server = Manager(app)
-
-with app.app_context():
+with application.app_context():
     g.contextPath = ""
 
 
-@app.errorhandler(404)
+@application.errorhandler(404)
 def page_not_found(e):
     return render_template("error/404.html"), 404
 
 
-@app.teardown_appcontext
+@application.teardown_appcontext
 def shutdown_session(exception=None):
     db.session.remove()
-    # TODO: send mail while app shutdown
+    # TODO: send mail while application shutdown
 
 
 @server.command
@@ -50,7 +50,7 @@ def check():
 
 
 def make_shell_context():
-    return dict(app=app, db=db)
+    return dict(app=application, db=db)
 
 
 if __name__ == "__main__":

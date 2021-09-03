@@ -12,10 +12,10 @@ from __future__ import print_function
 from flask import Blueprint
 from flask_login import login_required
 
-tf_apis = Blueprint("apis", __name__, url_prefix="/apis/tf")
+apis = Blueprint("apis", __name__, url_prefix="/apis/tf")
 
 
-@tf_apis.route('test', methods=['GET', 'POST'])
+@apis.route('test', methods=['GET', 'POST'])
 @login_required
-def tf_test():
+def test():
     print("tf_apis")

@@ -5,4 +5,4 @@
 #
 # License: Apache-2.0 License
 
-DIALOGUE_APIS_MODULE = {"tf": "app.dialogue.tensorflow.apis", "torch": "app.dialogue.pytorch.apis"}
+DIALOGUE_APIS_MODULE = {"tf": "dialogue.tensorflow.apis", "torch": "dialogue.pytorch.apis"}
