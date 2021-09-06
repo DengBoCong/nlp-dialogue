@@ -19,7 +19,7 @@
 
 # 架构
 开放域生成问答模型
-Leveraging Passage Retrieval with Generative Models for Open Domain Question Answering
+Leveraging Passage Retrieval with Generative Models for Open Domain Question Answerin
 
 检索
 Dense Passage Retrieval for Open-Domain Question Answering
