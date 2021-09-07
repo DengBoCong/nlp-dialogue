@@ -27,10 +27,20 @@ login_manager.session_protection = "strong"
 login_manager.login_view = "views.login"
 login_manager.login_message = "Token is invalid, please regain permissions"
 
+
+@login_manager.user_loader
+def load_user(user_id):
+    """ user load
+    """
+    return {"ID": "null"}
+
+
 basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
+    """ server configuration
+    """
     # session
     PERMANENT_SESSION_LIFETIME = timedelta(hours=3)
     # mail
@@ -50,6 +60,8 @@ class Config:
 
     @classmethod
     def init_app(cls, app: Flask):
+        """ common configuration
+        """
         app.config["DEBUG"] = cls.DEBUG
         app.config["PERMANENT_SESSION_LIFETIME"] = cls.PERMANENT_SESSION_LIFETIME
         app.config["MAIL_SERVER"] = cls.MAIL_SERVER
@@ -68,11 +80,15 @@ class Config:
 
 
 class DevelopmentConfig(Config):
+    """ development env configuration
+    """
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true"
 
 
 class ProductionConfig(Config):
+    """ product env configuration
+    """
     SQLALCHEMY_DATABASE_URI = 'mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true'
 
 
@@ -84,6 +100,8 @@ config = {
 
 
 def create_app(config_name):
+    """ assemble server app information in this method
+    """
     app = Flask(__name__, template_folder="app/templates", static_folder="app/static")
     app.config.from_object(config[config_name])
     config[config_name].init_app(app=app)

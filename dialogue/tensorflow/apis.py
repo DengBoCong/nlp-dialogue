@@ -10,12 +10,11 @@ from __future__ import division
 from __future__ import print_function
 
 from flask import Blueprint
-from flask_login import login_required
 
-apis = Blueprint("apis", __name__, url_prefix="/apis/tf")
+apis = Blueprint("tf_apis", __name__, url_prefix="/apis/tf")
 
 
 @apis.route('test', methods=['GET', 'POST'])
-@login_required
 def test():
-    print("tf_apis")
+    return "tf_apis"
+
