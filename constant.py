@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" Global Static Variables
+""" 全局静态变量
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #

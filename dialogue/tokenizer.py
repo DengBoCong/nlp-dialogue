@@ -11,6 +11,7 @@ from __future__ import print_function
 
 import json
 import numpy as np
+import os
 from collections import defaultdict
 from collections import OrderedDict
 
@@ -191,7 +192,7 @@ class Tokenizer(object):
         return json.dumps(tokenizer_config, **kwargs)
 
 
-def text_to_word_sequence(text, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=" "):
+def text_to_word_sequence(text, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', lower=True, split=" ") -> list:
     """ 讲文本转换成token序列
     :param text: 文本列表
     :param filters: 过滤规则, 默认过滤所有标点符号、制表符、换行符等
@@ -210,7 +211,7 @@ def text_to_word_sequence(text, filters='!"#$%&()*+,-./:;<=>?@[\\]^_`{|}~\t\n', 
 
 
 def pad_sequences(sequences, max_len=None, dtype='int32',
-                  padding='pre', truncating='pre', value=0.):
+                  padding='pre', truncating='pre', value=0.) -> np.ndarray:
     """ 填充序列，如果未指定最大长度，则默认使用序列中最长长度
 
     :param sequences: 需要填充的序列

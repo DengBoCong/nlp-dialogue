@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" Project Server Config
+""" Server配置
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #
@@ -30,7 +30,7 @@ login_manager.login_message = "Token is invalid, please regain permissions"
 
 @login_manager.user_loader
 def load_user(user_id):
-    """ user load
+    """ 会话激活
     """
     return {"ID": "null"}
 
@@ -39,7 +39,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 class Config:
-    """ server configuration
+    """ server配置
     """
     # session
     PERMANENT_SESSION_LIFETIME = timedelta(hours=3)
@@ -60,7 +60,7 @@ class Config:
 
     @classmethod
     def init_app(cls, app: Flask):
-        """ common configuration
+        """ 公共配置
         """
         app.config["DEBUG"] = cls.DEBUG
         app.config["PERMANENT_SESSION_LIFETIME"] = cls.PERMANENT_SESSION_LIFETIME
@@ -80,14 +80,14 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    """ development env configuration
+    """ 开发环境配置
     """
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true"
 
 
 class ProductionConfig(Config):
-    """ product env configuration
+    """ 生产环境配置
     """
     SQLALCHEMY_DATABASE_URI = 'mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true'
 
@@ -100,7 +100,7 @@ config = {
 
 
 def create_app(config_name):
-    """ assemble server app information in this method
+    """ 整合Server app的相关配置
     """
     app = Flask(__name__, template_folder="app/templates", static_folder="app/static")
     app.config.from_object(config[config_name])
