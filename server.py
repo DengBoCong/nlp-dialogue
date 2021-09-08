@@ -32,7 +32,9 @@ with application.app_context():
 
 
 @application.errorhandler(404)
-def page_not_found(e):
+def route_not_found(e):
+    """ route not found
+    """
     return render_template("error/404.html"), 404
 
 
@@ -50,6 +52,8 @@ def check():
 
 
 def make_shell_context():
+    """ make it possible to operate the app through shell commands
+    """
     return dict(app=application, db=db)
 
 
