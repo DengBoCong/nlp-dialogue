@@ -10,6 +10,8 @@ from __future__ import division
 from __future__ import print_function
 
 import json
+import math
+
 import numpy as np
 import os
 from collections import defaultdict
@@ -32,18 +34,19 @@ class Tokenizer(object):
         :param document_count: 文本总数
         """
 
-        self.word_counts = OrderedDict()
-        self.word_docs = defaultdict(int)
+        self.word_counts = OrderedDict()  # 总文本中词计数
+        self.word_docs = defaultdict(int)  # 某个token在文本中出现的次数
         self.filters = filters
         self.split = split
         self.lower = lower
         self.num_words = num_words
-        self.document_count = document_count
+        self.document_count = document_count  # 文本计数
         self.char_level = char_level
         self.oov_token = oov_token
-        self.index_docs = defaultdict(int)
+        self.index_docs = defaultdict(int)  # 索引-出现文本计数 词典
         self.word_index = {}
         self.index_word = {}
+        self.counts = list()
 
     def fit_on_texts(self, texts: list) -> None:
         """ 更新内部词汇表
@@ -62,11 +65,18 @@ class Tokenizer(object):
                 seq = text
             else:
                 seq = text_to_word_sequence(text, filters=self.filters, lower=self.lower, split=self.split)
+
+            text_tf_dict = dict()
             for w in seq:
                 if w in self.word_counts:
                     self.word_counts[w] += 1
+                    text_tf_dict += 1
                 else:
                     self.word_counts[w] = 1
+                    text_tf_dict = 1
+
+            self.counts.append(text_tf_dict)
+
             for w in set(seq):
                 # 计算token出现在多少个文本中
                 self.word_docs[w] += 1
@@ -157,6 +167,33 @@ class Tokenizer(object):
                     vect.append(self.index_word[oov_token_index])
             vect = ' '.join(vect)
             yield vect
+
+    def get_tf_idf_score(self, query: list, index: int, e: int) -> float:
+        """ 计算文本序列与文本列表指定的文本序列的tf-idf相似度分数
+        :param query: 文本序列
+        :param index: 指定文本列表中的文本序列索引
+        :param e: 调教洗漱
+        :return: tf-idf分数
+        """
+        score = 0.
+        total = sum(self.counts[index].values())
+        for token in query:
+            if token not in self.counts[index]:
+                continue
+            idf = math.log((self.document_count + e) / (self.word_docs[token] + e))
+            score += (self.counts[index][token] / total) * idf
+
+        return score
+
+    def tf_idf_retrieval(self, query: list, top_k: int = 0) -> list:
+        """ 检索文本列表中tf-idf分数最高的前top-k个文本序列，当
+            top-k为0时，返回文本列表中所有文本序列与指定文本序列
+            的td-idf分数，不排序
+        :param query: 文本序列
+        :param top_k: 返回的数量
+        :return: tf-idf分数列表
+        """
+        pass
 
     def get_config(self) -> dict:
         """ 获取分词器的配置字典 """
@@ -318,3 +355,30 @@ def load_tokenizer(dict_path: str) -> Tokenizer:
         tokenizer = tokenizer_from_json(json_string)
 
     return tokenizer
+
+
+class Segment(object):
+    """ 分词工具
+    """
+
+    def __init__(self, model: str = "jieba"):
+        """ 需要初始化一个分词工具的base，默认使用结巴分词
+        :param model: 分词工具model
+        """
+        if model == "jieba":
+            import jieba
+            return " ".join(jieba.cut(sentence))
+        elif model == "lac":
+            from LAC import LAC
+            lac = LAC(mode="seg")
+            return " ".join(lac.run(sentence))
+        elif model == "thulac":
+            import thulac
+            thu1 = thulac.thulac(seg_only=True)
+            text = thu1.cut(sentence, text=True)
+            return text
+        elif model == "pkuseg":
+            import pkuseg
+            seg = pkuseg.pkuseg()
+            text = seg.cut(sentence)
+            return " ".join(text)
