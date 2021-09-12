@@ -16,6 +16,7 @@ import numpy as np
 import os
 from collections import defaultdict
 from collections import OrderedDict
+from typing import Any
 
 
 class Tokenizer(object):
@@ -440,22 +441,30 @@ class Segment(object):
 
     def __init__(self, model: str = "jieba"):
         """ 需要初始化一个分词工具的base，默认使用结巴分词
-        :param model: 分词工具model
+        :param model: 分词工具model，支付jieba, lac, pkuseg
         """
+        self.model = model
+        self.seg = None
+
         if model == "jieba":
             import jieba
-            return " ".join(jieba.cut(sentence))
+            self.seg = jieba
         elif model == "lac":
             from LAC import LAC
-            lac = LAC(mode="seg")
-            return " ".join(lac.run(sentence))
-        elif model == "thulac":
-            import thulac
-            thu1 = thulac.thulac(seg_only=True)
-            text = thu1.cut(sentence, text=True)
-            return text
+            self.seg = LAC(mode="seg")
         elif model == "pkuseg":
             import pkuseg
-            seg = pkuseg.pkuseg()
-            text = seg.cut(sentence)
-            return " ".join(text)
+            self.seg = pkuseg.pkuseg()
+
+    def cut(self, sentence: str, split: str = " ") -> Any:
+        """ 对文本进行分词
+        :param sentence: 分词文本
+        :param split: 分隔符，不传则返回token列表
+        :return: 分词后的token列表或文本
+        """
+        if self.model == "jieba":
+            return split.join(self.seg.cut(sentence))
+        elif self.model == "lac":
+            return split.join(self.seg.run(sentence))
+        elif self.model == "pkuseg":
+            return split.join(self.seg.cut(sentence))
