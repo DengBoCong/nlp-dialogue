@@ -47,6 +47,7 @@ class Tokenizer(object):
         self.word_index = {}
         self.index_word = {}
         self.counts = list()
+        self.length_average = 0.  # 文档平均长度
 
     def fit_on_texts(self, texts: list) -> None:
         """ 更新内部词汇表
@@ -66,14 +67,11 @@ class Tokenizer(object):
             else:
                 seq = text_to_word_sequence(text, filters=self.filters, lower=self.lower, split=self.split)
 
+            self.length_average += len(seq)
             text_tf_dict = dict()
             for w in seq:
-                if w in self.word_counts:
-                    self.word_counts[w] += 1
-                    text_tf_dict += 1
-                else:
-                    self.word_counts[w] = 1
-                    text_tf_dict = 1
+                self.word_counts[w] = self.word_counts.get(w, 0) + 1
+                text_tf_dict[w] = text_tf_dict.get(w, 0) + 1
 
             self.counts.append(text_tf_dict)
 
@@ -81,6 +79,7 @@ class Tokenizer(object):
                 # 计算token出现在多少个文本中
                 self.word_docs[w] += 1
 
+        self.length_average /= self.document_count
         wcounts = list(self.word_counts.items())
         wcounts.sort(key=lambda x: x[1], reverse=True)
 
@@ -168,11 +167,11 @@ class Tokenizer(object):
             vect = ' '.join(vect)
             yield vect
 
-    def get_tf_idf_score(self, query: list, index: int, e: int) -> float:
+    def get_tf_idf_score(self, query: list, index: int, e: int = 0.5) -> float:
         """ 计算文本序列与文本列表指定的文本序列的tf-idf相似度分数
         :param query: 文本序列
         :param index: 指定文本列表中的文本序列索引
-        :param e: 调教洗漱
+        :param e: 调教系数
         :return: tf-idf分数
         """
         score = 0.
@@ -185,15 +184,93 @@ class Tokenizer(object):
 
         return score
 
-    def tf_idf_retrieval(self, query: list, top_k: int = 0) -> list:
+    def tf_idf_retrieval(self, query: list, top_k: int = 0, e: int = 0.5) -> list:
         """ 检索文本列表中tf-idf分数最高的前top-k个文本序列，当
             top-k为0时，返回文本列表中所有文本序列与指定文本序列
             的td-idf分数，不排序
         :param query: 文本序列
         :param top_k: 返回的数量
+        :param e: 调教系数
         :return: tf-idf分数列表
         """
-        pass
+        scores = list()
+        d_length = len(self.counts)
+        for i in range(d_length):
+            node = (i, self.get_tf_idf_score(query=query, index=i, e=e))
+            scores.append(node)
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores if top_k == 0 else scores[:top_k]
+
+    def get_bm25_score(self, query: list, index: int, q_tf_dict: dict = None,
+                       if_tq: bool = True, e: int = 0.5, b=0.75, k1=2, k2=1.2) -> float:
+        """ 计算文本序列与文本列表指定的文本序列的BM25相似度分数
+        :param query: 文本序列
+        :param index: 指定文本列表中的文本序列索引
+        :param q_tf_dict: 用来配合批量计算分数使用，提高效率
+        :param if_tq: 是否刻画单词与query之间的相关性，长的query默认开启
+        :param e: 调教系数
+        :param b: 可调参数，(0,1)
+        :param k1: 可调正参数，[1.2, 2.0]
+        :param k2: 可调正参数，[1.2, 2.0]
+        :return: BM25分数
+        """
+        score = 0.
+        q_total = 0
+        d_total = sum(self.counts[index].values())
+
+        if if_tq and q_tf_dict:
+            # 计算query词数
+            q_total = len(query)
+            q_tf_dict = dict()
+            for token in query:
+                q_tf_dict[token] = q_tf_dict.get(token, 0) + 1
+
+        for token in query:
+            if token not in self.counts[index]:
+                continue
+            idf = math.log((self.document_count - self.word_docs[token] + e) / (self.word_docs[token] + e))
+            tf_td = self.counts[index][token] / d_total
+            sim_td = ((k1 + 1) * tf_td) / (k1 * (1 - b + b * d_total / self.length_average) + tf_td)
+
+            sim_tq = 1.
+            if if_tq:
+                tf_tq = q_tf_dict[token] / q_total
+                sim_tq = ((k2 + 1) * tf_tq) / (k2 + tf_tq)
+
+            score += idf * sim_td * sim_tq
+
+        return score
+
+    def bm25_idf_retrieval(self, query: list, top_k: int = 0, if_tq: bool = True,
+                           e: int = 0.5, b=0.75, k1=2, k2=1.2) -> list:
+        """ 检索文本列表中BM25分数最高的前top-k个文本序列，当
+            top-k为0时，返回文本列表中所有文本序列与指定文本序列
+            的BM25分数，不排序
+        :param query: 文本序列
+        :param top_k: 返回的数量
+        :param if_tq: 是否刻画单词与query之间的相关性，长的query默认开启
+        :param e: 调教系数
+        :param b: 可调参数，(0,1)
+        :param k1: 可调正参数，[1.2, 2.0]
+        :param k2: 可调正参数，[1.2, 2.0]
+        :return: BM25分数列表
+        """
+        scores = list()
+        d_length = len(self.counts)
+        q_tf_dict = None
+
+        if if_tq:
+            # 计算query词数
+            q_tf_dict = dict()
+            for token in query:
+                q_tf_dict[token] = q_tf_dict.get(token, 0) + 1
+
+        for i in range(d_length):
+            node = (i, self.get_bm25_score(query=query, index=i, q_tf_dict=q_tf_dict,
+                                           if_tq=if_tq, e=e, b=b, k1=k1, k2=k2))
+            scores.append(node)
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return scores if top_k == 0 else scores[:top_k]
 
     def get_config(self) -> dict:
         """ 获取分词器的配置字典 """
