@@ -18,7 +18,7 @@ from flask import render_template
 from flask_migrate import Migrate
 from flask_script import Manager
 from flask_script import Shell
-from constant import DIALOGUE_APIS_MODULE
+from configs import DIALOGUE_APIS_MODULE
 
 application = create_app(config_name=os.environ.get("ENV") or "default")
 module = importlib.import_module(DIALOGUE_APIS_MODULE.get(os.environ.get("DIALOGUE_MODULE") or "tf"))
