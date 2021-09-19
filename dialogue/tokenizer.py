@@ -280,8 +280,10 @@ class Tokenizer(object):
         json_index_docs = json.dumps(self.index_docs)
         json_word_index = json.dumps(self.word_index)
         json_index_word = json.dumps(self.index_word)
+        json_counts = json.dumps(self.counts)
 
         return {
+            'length_average': self.length_average,
             'num_words': self.num_words,
             'filters': self.filters,
             'lower': self.lower,
@@ -293,7 +295,8 @@ class Tokenizer(object):
             'word_docs': json_word_docs,
             'index_docs': json_index_docs,
             'index_word': json_index_word,
-            'word_index': json_word_index
+            'word_index': json_word_index,
+            'counts': json_counts,
         }
 
     def to_json(self, **kwargs) -> str:
@@ -407,6 +410,8 @@ def tokenizer_from_json(json_string) -> Tokenizer:
     index_word = json.loads(config.pop('index_word'))
     index_word = {int(k): v for k, v in index_word.items()}
     word_index = json.loads(config.pop('word_index'))
+    length_average = int(config.pop('length_average'))
+    counts = json.loads(config.pop('counts'))
 
     tokenizer = Tokenizer(**config)
     tokenizer.word_counts = word_counts
@@ -414,6 +419,8 @@ def tokenizer_from_json(json_string) -> Tokenizer:
     tokenizer.index_docs = index_docs
     tokenizer.word_index = word_index
     tokenizer.index_word = index_word
+    tokenizer.length_average = length_average
+    tokenizer.counts = counts
 
     return tokenizer
 
