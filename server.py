@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" Server启动入口
+""" Server Entrance
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #
@@ -33,14 +33,14 @@ with application.app_context():
 
 @application.errorhandler(404)
 def route_not_found(e):
-    """ Api/路由未找到指引
+    """ Api/Route not found
     """
     return render_template("error/404.html"), 404
 
 
 @application.teardown_appcontext
 def shutdown_session(exception=None):
-    """ 当Sever销毁时进行的最后操作
+    """ The last operation performed when the Sever shutdown
     """
     db.session.remove()
     # TODO: send mail while application shutdown
@@ -48,7 +48,7 @@ def shutdown_session(exception=None):
 
 @server.command
 def check():
-    """ 启动前检查指令
+    """ Check instructions before starting
     """
     if not os.path.exists("logs/run"):
         os.mkdir("logs/run")
@@ -56,7 +56,7 @@ def check():
 
 
 def make_shell_context():
-    """ 使得可以通过shell指令来操控已运行的Server程序
+    """ Make it possible to control the running Server program through shell commands
     """
     return dict(app=application, db=db)
 

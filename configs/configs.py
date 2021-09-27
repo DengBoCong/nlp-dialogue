@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" Server配置
+""" Server Configuration
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #
@@ -15,7 +15,7 @@ from flask import Flask
 
 
 class Config:
-    """ server配置
+    """ server configuration
     """
     # session
     PERMANENT_SESSION_LIFETIME = timedelta(hours=3)
@@ -36,7 +36,7 @@ class Config:
 
     @classmethod
     def init_app(cls, app: Flask):
-        """ 公共配置
+        """ common configuration
         """
         app.config["DEBUG"] = cls.DEBUG
         app.config["PERMANENT_SESSION_LIFETIME"] = cls.PERMANENT_SESSION_LIFETIME
@@ -56,14 +56,14 @@ class Config:
 
 
 class DevelopmentConfig(Config):
-    """ 开发环境配置
+    """ development configuration
     """
     DEBUG = True
     SQLALCHEMY_DATABASE_URI = "mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true"
 
 
 class ProductionConfig(Config):
-    """ 生产环境配置
+    """ production configuration
     """
     SQLALCHEMY_DATABASE_URI = 'mysql://root:Andie130857@localhost:3306/verb?charset=utf8&autocommit=true'
 

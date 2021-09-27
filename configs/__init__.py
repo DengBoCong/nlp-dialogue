@@ -1,5 +1,5 @@
 #! -*- coding: utf-8 -*-
-""" 全局配置
+""" Global Configuration
 """
 # Author: DengBoCong <bocongdeng@gmail.com>
 #
@@ -31,7 +31,7 @@ login_manager.login_message = "Token is invalid, please regain permissions"
 
 @login_manager.user_loader
 def load_user(user_id):
-    """ 会话激活
+    """ Activate session
     """
     return {"ID": "null"}
 
@@ -40,7 +40,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 
 def create_app(config_name):
-    """ 整合Server app的相关配置
+    """ Server app related configuration
     """
     app = Flask(__name__, template_folder="../app/templates", static_folder="../app/static")
     app.config.from_object(config[config_name])
