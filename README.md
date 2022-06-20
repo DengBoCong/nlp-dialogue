@@ -135,8 +135,8 @@ solr.add(docs=responses)
 使用前需要先将数据添加至Solr，在本SMN模型中使用，先执行pre_treat模式即可。
 
 # Demo概览
-<img align="center" height="400" src="https://github.com/DengBoCong/nlp-dialogue/blob/main/assets/main.png">
-<img align="center" height="400" src="https://github.com/DengBoCong/nlp-dialogue/blob/main/assets/chat.png">
+<img align="center" height="400" src="https://github.com/DengBoCong/nlp-dialogue/blob/main/app/assets/main.png">
+<img align="center" height="400" src="https://github.com/DengBoCong/nlp-dialogue/blob/main/app/assets/chat.png">
 
 # 参考代码和文献
 1. [Attention Is All You Need](https://arxiv.org/pdf/1706.03762.pdf) | [阅读笔记](https://zhuanlan.zhihu.com/p/250946855)：Transformer的开山之作，值得精读 | Ashish et al,2017
