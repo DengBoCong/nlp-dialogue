@@ -162,7 +162,7 @@ def load_dialogs(diag_fn, kb, groups_fn=None):
     :param groups_fn: 语句槽位集合文件路径
     :return: 整理好的数据
     """
-    with open(diag_fn) as file:
+    with open(diag_fn, encoding="utf-8") as file:
         dialogues = json.load(file)
 
     data = []
